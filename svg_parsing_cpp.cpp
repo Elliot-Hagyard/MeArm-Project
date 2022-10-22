@@ -246,10 +246,66 @@ void parse_line(int size_of_line){
         idx+=1;
        }
      }
-//   else if(strstr(begining_of_string,draw_types[1])){
+  else if(strstr(begining_of_string,polyline) or strstr(begining_of_string,polygon)){
+      for(int i = 0; i <4; i++)
+          line_array[i] = 0;
+      int initial_x = 0;
+      int initial_y =0;
 //      //TODO polyline parsing
+        //Just going to treat it as a line array
+        //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
+      //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
+      while(idx < size_of_line){
+          if(buffer[idx] == 'p' and buffer[idx+6] == '='){
+              if(strstr(begining_of_string,polygon)){
 
-//   }
+              }
+              idx+=8;
+              short idx_line_arr = 0;
+              while(buffer[idx] != '"'){
+
+                  short sign  = 1;
+                  if(buffer[idx] == '-'){
+                      sign=-1;
+                      idx++;
+                  }
+                  while(buffer[idx]!=' ' and buffer[idx]!= ','){
+                      if(buffer[idx]=='.'){
+                          while(buffer[idx]!= ',' and buffer[idx] != ' '){
+                              //Choping off the decimal for now
+                              idx+=1;
+                          }
+                      }
+                      else {
+                          line_array[idx_line_arr] *= 10;
+                          line_array[idx_line_arr] += (int(buffer[idx]) - int('0'))*sign;
+                          idx += 1;
+                      }
+                  }
+                  idx++;
+                  idx_line_arr+=1;
+                  if(idx_line_arr > 3){
+                      if(initial_x == 0 and initial_y == 0){
+                          initial_x = line_array[0];
+                          initial_y = line_array[1];
+                      }
+                      line_command();
+                      line_array[0] = line_array[2];
+                      line_array[1] = line_array[3];
+                      line_array[2] = 0;
+                      line_array[3] = 0;
+                      idx_line_arr = 2;
+                  }
+              }
+              if(strstr(begining_of_string,polygon)){
+                  line_array[2] = initial_x;
+                  line_array[3] = initial_y;
+                  line_command();
+              }
+          }
+          idx++;
+      }
+  }
    else if(strstr(begining_of_string,rect)){
       //TODO rect parsing
       for(int i =0; i < 4; i++) {
@@ -298,9 +354,7 @@ void parse_line(int size_of_line){
         }
       }
   }}
-//   else if(strstr(begining_of_string,draw_types[4])){
-//     //TODO polygon
-//   }
+
    else if (strstr(begining_of_string, circle)){
        for(int i = 0; i < 3; i++){
            circle_array[i] = 0;
