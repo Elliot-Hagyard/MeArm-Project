@@ -86,7 +86,7 @@ void rect_command(){
 
 }
 void path_command(char command){
-  if(int(command) < int('A')){
+  if(int(command) <= int('a')){
       //translate the relative commands to be absolute
       for(int i =0; i < 8; i++)
         path_array[i]+=cur_pos[i%2];
