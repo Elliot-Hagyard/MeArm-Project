@@ -32,6 +32,7 @@ void setup() {
     Serial.println("initialization failed!");
     while (1);
   }
+  file = SD.open("glasses.svg", FILE_READ);
   //Apparently, reading the file once before you parse is causing errors
 //  Serial.println("initialization done.");
 //
@@ -467,7 +468,6 @@ int readLine()
 
 
 void loop() {
-    file = SD.open("glasses.svg", FILE_READ);
     while(file){
       
     int len_of_line = readLine();
@@ -479,5 +479,6 @@ void loop() {
     parse_line(len_of_line);
     }
     file.close();
+    while(1);
 }
 
