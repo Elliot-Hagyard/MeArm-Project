@@ -13,7 +13,7 @@ float path_array[6] = {0,0,0,0,0,0};
 int line_array[4] = {0,0,0,0};
 int circle_array[3] = {0,0,0};
 int rect_array[4] = {0,0,0,0};
-const short point_array_len = 25;
+const short point_array_len = 100;
 float point_array[point_array_len][2];
 //Just a char array
 //Need to retain this info for lower case commands in svg
@@ -441,31 +441,32 @@ void readLine(){
                 for(int i =0; i < 6; i++)
                     cur_char = file.get();
                 if(cur_char == '='){
-                for(int i =0; i < 8; i++)
+                    file.get();
                     cur_char = file.get();
+                    std::cout<<cur_char;
                 short idx_line_arr = 0;
-                if (strstr(buffer,polygon)){
-                    initial_x = cur_pos[0];
-                    initial_y = cur_pos[1];
-                }
                 while(cur_char != '"'){
 
                     short sign  = 1;
                     if(cur_char == '-'){
                         sign=-1;
+
                         cur_char = file.get();
+                        std::cout<<cur_char;
                     }
                     while(cur_char !=' ' and cur_char != ','){
                         if(cur_char =='.'){
-                            while(file.peek() != ',' and file.peek() != ' '){
+                            while(cur_char != ',' and cur_char != ' '){
                                 //Choping off the decimal for now
                                 cur_char = file.get();
+                                std::cout<<cur_char;
                             }
                         }
                         else {
                             line_array[idx_line_arr] *= 10;
                             line_array[idx_line_arr] += (int(cur_char) - int('0'))*sign;
                             cur_char = file.get();
+                            std::cout<<cur_char;
                         }
                     }
                     cur_char = file.get();
@@ -483,15 +484,16 @@ void readLine(){
                         idx_line_arr = 2;
                     }
                 }
-                if(strstr(begining_of_string,polygon)){
+                if(strstr(buffer,polygon)){
                     line_array[2] = initial_x;
                     line_array[3] = initial_y;
                     line_command();
                 }
             }}
-            file.get();
+           cur_char = file.get();
+            std::cout<<cur_char;
         }
-        file.get();
+        cur_char = file.get();
     }
     else if(strstr(buffer,line)){
         //NOTE: line has to be after polyline in how I've configured this
