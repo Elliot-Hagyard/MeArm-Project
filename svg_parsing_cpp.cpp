@@ -71,6 +71,10 @@ void rect_command(){
     const short y = rect_array[1];
     const short w = rect_array[2];
     const short h = rect_array[3];
+    std::cout<<"x:"<<x<<std::endl;
+    std::cout<<"y:"<<y<<std::endl;
+    std::cout<<"w:"<<w<<std::endl;
+    std::cout<<"h:"<<h<<std::endl;
     //Line one (x-w/2, y-h/2) -> (x-w/2,y+h/2)
     //Line Two (cur_pos[x], cur_pos[y], cur_pos[x]+w, cur_pos[y])
     //line three (cur_pos[x],cur_pos[y], cur_pos[x], cur_pos[y]-h)
@@ -97,7 +101,7 @@ void rect_command(){
     line_command();
 
 }
-int cubicBezierCurve(float cX1, float cY1, float cX2, float cY2, float finalX, float finalY){
+void cubicBezierCurve(float cX1, float cY1, float cX2, float cY2, float finalX, float finalY){
 
 
     std::cout<<"Here";
@@ -115,7 +119,7 @@ int cubicBezierCurve(float cX1, float cY1, float cX2, float cY2, float finalX, f
     cur_pos[0] = point_array[index-1][0];
     cur_pos[1] = point_array[index-1][1];
 }
-int quadraticBezierCurve(float cX1, float cY1, float finalX, float finalY){
+void quadraticBezierCurve(float cX1, float cY1, float finalX, float finalY){
     float i = 0;
     int index = 0;
     while(i < 1){
@@ -233,8 +237,6 @@ void path_command(char command){
       //Vertiacal line
       break;
       }
-    
-    
   }
   for(int i = 0; i < 8; i++){
         path_array[i] = 0;
@@ -244,7 +246,6 @@ void path_command(char command){
 
 int parse_path_command(int idx){
   short i = 0;
-  std::cout<<"Staring index "<<idx<<std::endl;
   idx+=1;
   int starting_index = idx;
   bool neg = false;
@@ -291,269 +292,377 @@ int parse_path_command(int idx){
 
   return idx;
   }
-int get_num_from_quote(int num_array[], int index_in_array, int index_in_buffer){
-
-    index_in_buffer+=3;
+char get_num_from_quote(int num_array[], int index_in_array){
+    char cur_char = file.get();
+    std::cout<<cur_char;
+    cur_char = file.get();
+    std::cout<<cur_char;
+    cur_char = file.get();
+    std::cout<<cur_char<<std::endl;
     short sign = 1;
-    if(buffer[index_in_buffer] == '-'){
-        index_in_buffer+=1;
+    if(cur_char == '-'){
+        cur_char = file.get();
         sign = -1;
     }
     //THis logic should probably be in a function, but will need to revisit that
-    while(buffer[index_in_buffer]!='"'){
-        if(buffer[index_in_buffer]=='.'){
-            index_in_buffer+=1;
-            if( buffer[index_in_buffer] > '5'){
+    while(cur_char !='"'){
+        if(cur_char =='.'){
+            cur_char = file.get();
+            std::cout<<cur_char;
+            if(cur_char > '5'){
                 num_array[index_in_array]+=1;
             }
-            while(buffer[index_in_buffer]!='"'){
+            while(cur_char!='"'){
 
                 //Choping off the decimal for now
-                index_in_buffer+=1;
+               cur_char = file.get();
+               std::cout<<cur_char;
+
             }
         }
         else {
             num_array[index_in_array] *= 10;
-            num_array[index_in_array] += (int(buffer[index_in_buffer]) - int('0')) * sign;
-            index_in_buffer += 1;
+            num_array[index_in_array] += (int(cur_char) - int('0')) * sign;
+            cur_char = file.get();
+            std::cout<<cur_char;
         }
     }
-    return index_in_buffer;
-}
-void parse_line(int size_of_line){
-  //I'm creating the parsing assuming that it is the svg 1.1 tiny
-  //Size of line is supposed to avoid issues with needing to reset the buffer each time, might be smarter to reset each time
-  //This will have some inscrutable bug I am sure
-  /*This function is parsing a line of the svg, treating it as a character array. Code makes a lot of assumptions about
-   * file structure so it may be a little inscrutable (on top of my really messy code)
-   * The line should be stored in buffer, and idx reprents the index of the character in the array we are looking at
-   * Becasue we don't know the len of the any particular part of the line, we have to use while loops to iterate till we find somehting\
-   * Then, assign the values into the path_array
-   * Then call a function which gets values from path array and 
-   * TODO: Test Line parsing, Finish Path, Add parsing for other types?
-   */
-  std::cout<<"Lenght of line: "<< size_of_line<<std::endl;
-  int idx = 0;
-
-  while(buffer[idx] != '<'){
-    //Ignore whitespace at the begining of the line
-    idx++;
-  }
-  //  draw_types[0] = "path";
-  //  draw_types[1] = "line";
-  //  draw_types[2] = "rect";
-  //  draw_types[3] = "polyline";
-  //  draw_types[4] = "polygon";
-  //  draw_types[5] = "circle";
-  //This is probably incredibly slow;
-  //Copying the begining of the buffer string over to hopefully speed up the strstr calls
-  strncpy(begining_of_string,buffer,10);
-  for (int i = 0; i<10; i++){
-    std::cout<<begining_of_string[i];
-  }
-  cur_pos[0] = 0;
-  cur_pos[1] = 0;
-  std::cout<<std::endl;
-  if(strstr(begining_of_string,path)){
-    //Should parse <path fill-rule="evenodd" fill="none" stroke="#000000" stroke-miterlimit="10" d="M73.5,31.5c0.3,1.9,0.5,6-2,9
-    //c-4.4,5.1-14.3,3.3-20-1c-4.2-3.1-9.1-9.8-7-16c2.8-8.4,16.7-11.1,19-8c3.9,5.1-23.1,27.1-18,35c4,6.3,24.2-2.7,28,4
-    //c3,5.3-6.8,15.4-6,16c1,0.8,17.6-13.6,14-21c-1.9-3.9-9.4-5.7-13-3c-4.1,3-0.6,10-3,15c-2.9,6.2-15.1,10-49,5"/>
-     while(idx < size_of_line){
-      std::cout<<buffer[idx];
-      
-      if(buffer[idx] == 'd' and buffer[idx+1] == '='){
-        //Move past the '=' and '"'
-        idx+=3;
-        while(buffer[idx] != '"'){
-          char command = buffer[idx];
-          idx = parse_path_command(idx);
-          path_command(command);
-         }
-        }
-        idx+=1;
-       }
-     }
-  else if(strstr(begining_of_string,polyline) or strstr(begining_of_string,polygon)){
-      for(int i = 0; i <4; i++)
-          line_array[i] = 0;
-      int initial_x = 0;
-      int initial_y =0;
-//      //TODO polyline parsing
-        //Just going to treat it as a line array
-        //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
-      //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
-      while(idx < size_of_line){
-          if(buffer[idx] == 'p' and buffer[idx+6] == '='){
-              if(strstr(begining_of_string,polygon)){
-
-              }
-              idx+=8;
-              short idx_line_arr = 0;
-              while(buffer[idx] != '"'){
-
-                  short sign  = 1;
-                  if(buffer[idx] == '-'){
-                      sign=-1;
-                      idx++;
-                  }
-                  while(buffer[idx]!=' ' and buffer[idx]!= ','){
-                      if(buffer[idx]=='.'){
-                          while(buffer[idx]!= ',' and buffer[idx] != ' '){
-                              //Choping off the decimal for now
-                              idx+=1;
-                          }
-                      }
-                      else {
-                          line_array[idx_line_arr] *= 10;
-                          line_array[idx_line_arr] += (int(buffer[idx]) - int('0'))*sign;
-                          idx += 1;
-                      }
-                  }
-                  idx++;
-                  idx_line_arr+=1;
-                  if(idx_line_arr > 3){
-                      if(initial_x == 0 and initial_y == 0){
-                          initial_x = line_array[0];
-                          initial_y = line_array[1];
-                      }
-                      line_command();
-                      line_array[0] = line_array[2];
-                      line_array[1] = line_array[3];
-                      line_array[2] = 0;
-                      line_array[3] = 0;
-                      idx_line_arr = 2;
-                  }
-              }
-              if(strstr(begining_of_string,polygon)){
-                  line_array[2] = initial_x;
-                  line_array[3] = initial_y;
-                  line_command();
-              }
-          }
-          idx++;
-      }
-  }
-   else if(strstr(begining_of_string,rect)){
-      //TODO rect parsing
-      for(int i =0; i < 4; i++) {
-          rect_array[i] = 0;
-      }
-      //<rect x="18.5" y="19.5" fill="#FFFFFF" width="272.5" height="23"/
-      while(idx < size_of_line){
-          if(buffer[idx] == 'x' or buffer[idx] == 'y' and buffer[idx+1] =='='){
-              idx = get_num_from_quote(rect_array,int(buffer[idx] == 'y'),idx);
-          }
-          else if(buffer[idx] == 'w' or buffer[idx] == 'h'){
-              int w_or_h = int('h' == buffer[idx]);
-              idx+=4+w_or_h;
-              //Code is starting to get alittle silly at 2 AM
-              idx = get_num_from_quote(rect_array,w_or_h+2, idx);
-              if (w_or_h){
-                  rect_command();
-              }
-          }
-          idx+=1;
-      }
-   }
-  else if(strstr(begining_of_string,line)){
-    //NOTE: line has to be after polyline in how I've configured this
-    //<line fill="none" stroke="#000000" stroke-width="2.834646e-02" stroke-miterlimit="10" x1="72.4" y1="766" x2="72.4" y2="752"/>
-     //Only care about d flag for n
-     //move buffer idx up  by <line.
-     while(idx < size_of_line){
-        //Instead of indexing idx through the array, it might make sense to create the 
-        idx++;
-        if(buffer[idx] == 'x' or buffer[idx] == 'y'){
-          //creating this value to index the lineArray to correctly place the x1, y1, x2, y2 vals
-          //This is done to avoid having seprate nested if statements for both x and y and seprate things for x1 x2
-          const short x_or_y =  int(buffer[idx])-int('x');
-          idx++;
-          if(buffer[idx] == '1' or buffer[idx] == '2'){
-            // if the value is 2, set equal to 2, else should be 0
-            const short one_or_two = (int(buffer[idx])-int('1'))*2;
-            //move past the quotes
-            idx = get_num_from_quote(line_array,(one_or_two+x_or_y), idx);
-            //If this is three, then it should be y2
-            if(x_or_y + one_or_two == 3){
-              //TODO create an actual line function
-              line_command();
-            }
-        }
-      }
-  }}
-
-   else if (strstr(begining_of_string, circle)){
-       for(int i = 0; i < 3; i++){
-           circle_array[i] = 0;
-       }
-     //TODO Circle
-     //<circle class="st0" cx="70" cy="51.6" r="22.7"/>
-        while(idx < size_of_line){
-            if(buffer[idx] == 'c'){
-                idx+=1;
-                if(buffer[idx] == 'x' or buffer[idx] == 'y' and buffer[idx+1] == '=' ){
-                    short array_loc = int(buffer[idx])-int('x');
-                    idx = get_num_from_quote(circle_array, array_loc, idx);
-                }
-
-            }
-            if(buffer[idx] == 'r' and  buffer[idx+1] == '=' ){
-                idx = get_num_from_quote(circle_array, 2, idx);
-                circle_command();
-            }
-            idx+=1;
-        }
-   }
-  else {
-    //Then the line is somehting else
-    return;
-  }
+    std::cout<<std::endl;
+    return cur_char;
 }
 
-int readLine()
-{
+
+void readLine(){
     for(int i =0; i < buffer_len; i++)
         buffer[i]='\0';
     for(int i=0; i <4; i++)
         line_array[i]=0;
     int idx = 0;
+
     while(file.peek() == '\t' or file.peek() == '\n' or file.peek() == ' '){
         file.get();
     }
+    idx = 0;
+    std::cout<<file.peek();
+    while(file.peek() != ' ' and idx <= 10 and not file.eof()){
+        buffer[idx] = file.get();
+        std::cout<<buffer[idx];
+        idx+=1;
+    }
+    std::cout<<std::endl;
 
-    while(true){
-        //Return wehn you encounter a newline
-        if (file.peek() != '>' and file.peek() != EOF){
-            if(file.peek() == '\n' or file.peek()=='\t'){
-                //Get rid of newlines between svg commands
+    if(strstr(buffer,path)){
+        char car = file.get();
+        while(car!= '>'){
+            std::cout<<car;
+            if(car == 'd'){
+                car = file.get();
+                if(car == '='){
+                    for(int i =0; i < 2; i++){
+                        car = file.get();
+                        std::cout<<car;
+                    }
+                    while(car != '"') {
+                        std::cout<<car<<" here"<<std::endl;
+                        char command = car;
+
+                        car = file.get();
+                        short i = 0;
+
+                        bool first = true;
+                        bool neg = false;
+                        //Assume that the cordinates for the 'M' go till the next character, since that will store the values
+                        while (int(car) < int('A') and car != '"') {
+                            std::cout<<car;
+                            if (car == '.') {
+                                first = false;
+                                car = file.get();
+                                std::cout<<car;
+                                while (int(car) <= int('9') and int(car) >= '0') {
+                                    car = file.get();
+                                    std::cout<<car;
+                                }
+
+                            } else {
+                                if (car < '0') {
+                                    neg = false;
+                                    //Ascii values for - and , are less than ascii value for '0'
+                                    if (car == '-') {
+                                        neg = true;
+
+                                        if (not first) {
+                                            i++;
+                                        }
+                                        first = false;
+                                        //If there is a negative sign, read the first number in as a negative number
+                                    } else {
+                                        i++;
+                                    }
+                                    car = file.get();
+                                    std::cout<<car;
+                                }
+                                path_array[i] *= 10;
+                                if (neg) {
+                                    path_array[i] -= (int(car) - int('0'));
+                                } else {
+                                    path_array[i] += (int(car) - int('0'));
+                                }
+                                car = file.get();
+                            }
+                        }
+                        std::cout<<std::endl;
+                        for (int a = 0; a < 8; a++) {
+                            std::cout << a << '\t';
+                            std::cout << path_array[a] << std::endl;
+                        }
+                        path_command(command);
+                    }
+            }
+            }
+        car = file.get();
+            std::cout<<car;
+        }
+        car = file.get();
+        std::cout<<car;
+    }
+    else if(strstr(buffer,polyline) or strstr(buffer,polygon)){
+        for(int i = 0; i <4; i++) {
+            line_array[i] = 0;
+        }
+        int initial_x = 0;
+        int initial_y =0;
+        char cur_char = file.get();
+//      //TODO polyline parsing
+        //Just going to treat it as a line array
+        //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
+        //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
+        while(cur_char != '>'){
+            if(cur_char == 'p'){
+                for(int i =0; i < 6; i++)
+                    cur_char = file.get();
+                if(cur_char == '='){
+                for(int i =0; i < 8; i++)
+                    cur_char = file.get();
+                short idx_line_arr = 0;
+                if (strstr(buffer,polygon)){
+                    initial_x = cur_pos[0];
+                    initial_y = cur_pos[1];
+                }
+                while(cur_char != '"'){
+
+                    short sign  = 1;
+                    if(cur_char == '-'){
+                        sign=-1;
+                        cur_char = file.get();
+                    }
+                    while(cur_char !=' ' and cur_char != ','){
+                        if(cur_char =='.'){
+                            while(file.peek() != ',' and file.peek() != ' '){
+                                //Choping off the decimal for now
+                                cur_char = file.get();
+                            }
+                        }
+                        else {
+                            line_array[idx_line_arr] *= 10;
+                            line_array[idx_line_arr] += (int(cur_char) - int('0'))*sign;
+                            cur_char = file.get();
+                        }
+                    }
+                    cur_char = file.get();
+                    idx_line_arr+=1;
+                    if(idx_line_arr > 3){
+                        if(initial_x == 0 and initial_y == 0){
+                            initial_x = line_array[0];
+                            initial_y = line_array[1];
+                        }
+                        line_command();
+                        line_array[0] = line_array[2];
+                        line_array[1] = line_array[3];
+                        line_array[2] = 0;
+                        line_array[3] = 0;
+                        idx_line_arr = 2;
+                    }
+                }
+                if(strstr(begining_of_string,polygon)){
+                    line_array[2] = initial_x;
+                    line_array[3] = initial_y;
+                    line_command();
+                }
+            }}
+            file.get();
+        }
+        file.get();
+    }
+    else if(strstr(buffer,line)){
+        //NOTE: line has to be after polyline in how I've configured this
+        //<line fill="none" stroke="#000000" stroke-width="2.834646e-02" stroke-miterlimit="10" x1="72.4" y1="766" x2="72.4" y2="752"/>
+        //Only care about d flag for n
+        //move buffer idx up  by <line.
+        char cur_char = file.get();
+        while(cur_char != '>'){
+            //Instead of indexing idx through the array, it might make sense to create the
+            if(cur_char == 'x' or cur_char == 'y'){
+                //creating this value to index the lineArray to correctly place the x1, y1, x2, y2 vals
+                //This is done to avoid having seprate nested if statements for both x and y and seprate things for x1 x2
+                const short x_or_y =  int(cur_char)-int('x');
+                cur_char = file.get();
+                std::cout<<cur_char;
+                if(cur_char == '1' or cur_char == '2'){
+                    // if the value is 2, set equal to 2, else should be 0
+                    const short one_or_two = (int(cur_char)-int('1'))*2;
+                    //move past the quotes
+                    cur_char = get_num_from_quote(line_array,(one_or_two+x_or_y));
+                    //If this is three, then it should be y2
+                    std::cout<<cur_char;
+                    if(x_or_y + one_or_two == 3){
+                        //TODO create an actual line function
+                        line_command();
+                    }
+                }
+            }
+            cur_char = file.get();
+        }}
+    else if (strstr(buffer, circle)){
+        for(int i = 0; i < 3; i++){
+            circle_array[i] = 0;
+        }
+        //TODO Circle
+        //<circle class="st0" cx="70" cy="51.6" r="22.7"/>
+        char cur_char = file.get();
+        std::cout<<cur_char;
+        while(cur_char != '>'){
+            if(cur_char == 'c'){
+                cur_char = file.get();
+                std::cout<<cur_char;
+                if(cur_char == 'x' or cur_char == 'y'){
+                    if( file.peek() == '=' ){
+                        short array_loc = int(cur_char)-int('x');
+                        cur_char = get_num_from_quote(circle_array, array_loc);
+                    }
+                }
+            }
+            if(cur_char == 'r'){
+                std::cout<<cur_char;
+                if(file.peek() == '=' ){
+                    cur_char = get_num_from_quote(circle_array, 2);
+                    std::cout<<cur_char;
+                    circle_command();
+                }
+            }
+            cur_char = file.get();
+            std::cout<<cur_char;
+        }
+    }
+    else if(strstr(buffer,rect)){
+        //TODO rect parsing
+        for(int i =0; i < 4; i++) {
+            rect_array[i] = 0;
+        }
+        char cur_char = file.get();
+        std::cout<<cur_char;
+        //<rect x="18.5" y="19.5" fill="#FFFFFF" width="272.5" height="23"/
+        while(cur_char != '>'){
+            if(cur_char == 'x' or cur_char == 'y' ){
+                if ( file.peek() =='='){
+                    cur_char = get_num_from_quote(rect_array,int(cur_char == 'y'));
+                    std::cout<<cur_char;
+                }
+            }
+            else if(cur_char == 'w' or cur_char == 'h'){
+                for(int i = 0; i < 4 + (cur_char == 'h'); i++) {
+                    file.get();
+                }
+                if(file.peek() == '=') {
+                    int w_or_h = int('h' == cur_char);
+                    //Code is starting to get alittle silly at 2 AM
+                    cur_char = get_num_from_quote(rect_array, w_or_h + 2);
+                    std::cout << cur_char;
+                    if (w_or_h) {
+                        rect_command();
+                    }
+                }
+            }
+            cur_char = file.get();
+            std::cout<<cur_char;
+        }
+        file.get();
+    }
+    else if(strstr(begining_of_string,polyline) or strstr(begining_of_string,polygon)){
+            for(int i = 0; i <4; i++) {
+                line_array[i] = 0;
+            }
+            int initial_x = 0;
+            int initial_y =0;
+//      //TODO polyline parsing
+            //Just going to treat it as a line array
+            //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
+            //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
+            while(file.peek() != '>'){
+                if(buffer[idx] == 'p' and buffer[idx+6] == '='){
+                    if(strstr(begining_of_string,polygon)){
+
+                    }
+                    idx+=8;
+                    short idx_line_arr = 0;
+                    while(file.peek() != '"'){
+
+                        short sign  = 1;
+                        if(file.peek() == '-'){
+                            sign=-1;
+                            file.get();
+                        }
+                        while(file.peek() !=' ' and file.peek() != ','){
+                            if(file.peek() =='.'){
+                                while(file.peek() != ',' and file.peek() != ' '){
+                                    //Choping off the decimal for now
+                                    file.get();
+                                }
+                            }
+                            else {
+                                line_array[idx_line_arr] *= 10;
+                                line_array[idx_line_arr] += (int(buffer[idx]) - int('0'))*sign;
+                                file.get();
+                            }
+                        }
+                        file.get();
+                        idx_line_arr+=1;
+                        if(idx_line_arr > 3){
+                            if(initial_x == 0 and initial_y == 0){
+                                initial_x = line_array[0];
+                                initial_y = line_array[1];
+                            }
+                            line_command();
+                            line_array[0] = line_array[2];
+                            line_array[1] = line_array[3];
+                            line_array[2] = 0;
+                            line_array[3] = 0;
+                            idx_line_arr = 2;
+                        }
+                    }
+                    if(strstr(begining_of_string,polygon)){
+                        line_array[2] = initial_x;
+                        line_array[3] = initial_y;
+                        line_command();
+                    }
+                }
                 file.get();
             }
-            else {
-                file.get(buffer[idx]);
-                idx += 1;
-            }
+            file.get();
         }
-        else{
-            //avoid an inf loop, need to read \n for next iteration
-            file.get(buffer[idx]);
-            idx+=1;
-            return idx;
+    else {
+        while(file.get() != '>' and not file.eof()){
         }
-  }
-}
+    }
+    std::cout<<std::endl;
+    return;
+    }
 
 int main(void){
     myFile.open("./example.csv");
     myFile<<"X,Y\n";
     file.open("/Users/elliothagyard/Documents/Untitled-1.svg",std::fstream::in);
     while( not file.eof()){
-    int len_of_line = readLine();
-    std::cout<<len_of_line;
-    for(int i = 0; i < len_of_line; i++){
-        std::cout<<buffer[i];
-    }
-    std::cout<<std::endl;
-    parse_line(len_of_line);
+        readLine();
     }
     myFile.close();
     file.close();
