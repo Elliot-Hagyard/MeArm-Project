@@ -11,14 +11,16 @@ char buffer[buffer_len];
 float path_array[6] = {0,0,0,0,0,0};
 //Store the data from a line.
 int line_array[4] = {0,0,0,0};
-int circle_array[3] = {0,0,0};
+int circle_array[4] = {0,0,0,0};
 int rect_array[4] = {0,0,0,0};
+char previous_command;
 const short point_array_len = 100;
 float point_array[point_array_len][2];
 //Just a char array
 //Need to retain this info for lower case commands in svg
 float cur_pos[2];
 float initial_points[2];
+float previous_bezier[2];
 char begining_of_string[10];
 std::ofstream myFile;
 
@@ -30,6 +32,7 @@ const char rect[5] = "rect";
 const char line[5] = "line";
 const char polygon[8] = "polygon";
 const char circle[7] = "circle";
+const char ellipse[8] = "ellipse";
 
 void line_command(){
   //TODO: Read from the global line_array and then make the mearm actually draw it
@@ -46,15 +49,19 @@ void line_command(){
   cur_pos[0] = line_array[2];
 
 }
+
 void circle_command(){
     std::cout<<"cx: "<< circle_array[0]<<std::endl;
     std::cout<<"cy: "<< circle_array[1]<<std::endl;
-    std::cout<<"r: "<< circle_array[2]<<std::endl;
+    std::cout<<"rx: "<< circle_array[2]<<std::endl;
+    std::cout<<"ry: "<< circle_array[3]<<std::endl;
     int index = 0;
+    int r1 = circle_array[2];
+    int r2 = (circle_array[3] == 0)?r1:circle_array[3];
     float i = 0;
     while(i < 3.141516*2){
-        point_array[index][x] = std::cos(i)*circle_array[2]+circle_array[0];
-        point_array[index][y] = std::sin(i)*circle_array[2]+circle_array[1];
+        point_array[index][x] = r1*std::cos(i)+circle_array[0];
+        point_array[index][y] = r2*std::sin(i)+circle_array[1];
         myFile<<"c,"<<point_array[index][0]<<","<<point_array[index][1]<<"\n";
         i+=1.0/point_array_len;
         index+=1;
@@ -64,6 +71,8 @@ void circle_command(){
     myFile<<"e\n";
     cur_pos[0] = point_array[index][0];
     cur_pos[1] = point_array[index][1];
+    for(int i = 0; i < 4; i++)
+        circle_array[i] =0;
 
 }
 void rect_command(){
@@ -107,38 +116,53 @@ void cubicBezierCurve(float cX1, float cY1, float cX2, float cY2, float finalX, 
     std::cout<<"Here";
     float i = 0;
     int index = 0;
+    float starting_x = cur_pos[x];
+    float starting_y = cur_pos[y];
     while(i < 1){
-        point_array[index][x] = (1-i)*(1-i)*(1-i)*cur_pos[x] + 3*(1-i)*(1-i)*i*cX1 + 3*(1-i)*i*i*cX2 + i*i*i*finalX;
-        point_array[index][y] = (1-i)*(1-i)*(1-i)*cur_pos[y] + 3*(1-i)*(1-i)*i*cY1 + 3*(1-i)*i*i*cY2 + i*i*i*finalY;
+        cur_pos[x] = (1-i)*(1-i)*(1-i)*starting_x + 3*(1-i)*(1-i)*i*cX1 + 3*(1-i)*i*i*cX2 + i*i*i*finalX;
+        cur_pos[y] = (1-i)*(1-i)*(1-i)*starting_y + 3*(1-i)*(1-i)*i*cY1 + 3*(1-i)*i*i*cY2 + i*i*i*finalY;
         i+=1.0/point_array_len;
-        myFile<<"c,"<<point_array[index][x]<<","<<point_array[index][y]<<"\n";
-        i+=1.0/point_array_len;
+        myFile<<"c,"<<cur_pos[x]<<","<<cur_pos[y]<<"\n";
         index+=1;
     }
+    previous_bezier[0] = cX2;
+    previous_bezier[1] = cY2;
     myFile<<"e\n";
-    cur_pos[0] = point_array[index-1][0];
-    cur_pos[1] = point_array[index-1][1];
 }
 void quadraticBezierCurve(float cX1, float cY1, float finalX, float finalY){
     float i = 0;
     int index = 0;
+    float starting_x = cur_pos[x];
+    float starting_y = cur_pos[y];
     while(i < 1){
         point_array[index][x] = (1-i)*(1-i)*cur_pos[x] + 2*(1-i)*i*cX1 + i*i*finalX;
         point_array[index][y] = (1-i)*(1-i)*cur_pos[y] + 2*(1-i)*i*cY1 + i*i*finalY;
         myFile<<"c,"<<point_array[index][x]<<","<<point_array[index][y]<<"\n";
+        cur_pos[x] = point_array[index][x];
+        cur_pos[x] = point_array[index][y];
         i+=1.0/point_array_len;
         index+=1;
     }
+    myFile<<"e\n";
 
 }
 void path_command(char command){
   if(int(command) >= int('a')){
       //translate the relative commands to be absolute
-      for(int i =0; i < 6; i++)
-        path_array[i]+=cur_pos[i%2];
+      std::cout<<cur_pos[0]<<','<<cur_pos[1]<<std::endl;
+      if(command != 'v')
+          for(int i =0; i < 6; i++) {
+              path_array[i] += cur_pos[i % 2];
+              std::cout << path_array[i];
+              std::cout<<std::endl;
+          }
+      else{
+          path_array[0] += cur_pos[1];
+      }
+
   }
   switch(command){
-    //Placing break statements after the capital letters only since 
+    //Placing break statements after the capital letters only since
     case 'm':
     case 'M':{
       //Move abs
@@ -155,13 +179,19 @@ void path_command(char command){
       initial_points[y]=path_array[y];
       break;
     }
-    case 's':{}
+    case 's':
     case 'S':{
       std::cout<<"reflected cubic Bezier curve"<<std::endl;
-      break; // FUCK STOP WITH THE TYPES
+        {
+          float cX1 = 2*cur_pos[0]-previous_bezier[0];
+          float cY1 = 2*cur_pos[1]-previous_bezier[1];
+            cubicBezierCurve(cX1, cY1, path_array[0], path_array[1], path_array[2],
+                             path_array[3]);
+        }
+      break;
       //Cubic Bezier curve shortend to be reflection of previous.
       }
-    case 'c':{}
+    case 'c':
     case 'C':{
         std::cout<<"cubic curve"<<std::endl;
       //Path array should contain 6 points
@@ -173,6 +203,7 @@ void path_command(char command){
                 path_array[3],
                 path_array[4],
                 path_array[5]);
+
       break;
       }
     case 'q':
@@ -187,7 +218,7 @@ void path_command(char command){
                   path_array[3]);
       //quadratic bezier curve
       break;
-    case 'z':{}
+    case 'z':
     case 'Z':{
       //Close path command. I think it just draws a straight line to the iniital point
       //Path array should contain 2 points
@@ -199,7 +230,7 @@ void path_command(char command){
       std::cout<<"Go to inital x and y"<<std::endl;
       break;
     }
-    case 'h':{}
+    case 'h':
     case 'H':{
       //Just a horiziontal line should contain one point in path array
         line_array[0] = cur_pos[x]; //
@@ -211,7 +242,7 @@ void path_command(char command){
       //move_to(path_ar[0], cur_y)
       break;
     }
-    case 'l':{}
+    case 'l':
     case 'L':{
         //contains 2 points in path array
         line_array[x] = cur_pos[x]; //x
@@ -224,7 +255,7 @@ void path_command(char command){
       //Line
       break;
       }
-    case 'v':{}
+    case 'v':
     case 'V':{
         //path array should have one point
         line_array[0] = cur_pos[x]; //x
@@ -242,6 +273,7 @@ void path_command(char command){
         path_array[i] = 0;
 
   }
+  previous_command = command;
 }
 
 int parse_path_command(int idx){
@@ -298,10 +330,13 @@ char get_num_from_quote(int num_array[], int index_in_array){
     cur_char = file.get();
     std::cout<<cur_char;
     cur_char = file.get();
+    while(cur_char == '\t' or cur_char == '\n')
+        cur_char = file.get();
     std::cout<<cur_char<<std::endl;
     short sign = 1;
     if(cur_char == '-'){
         cur_char = file.get();
+
         sign = -1;
     }
     //THis logic should probably be in a function, but will need to revisit that
@@ -344,7 +379,7 @@ void readLine(){
     }
     idx = 0;
     std::cout<<file.peek();
-    while(file.peek() != ' ' and idx <= 10 and not file.eof()){
+    while((file.peek() != ' ' and file.peek() != '\n') and idx <= 10 and not file.eof()){
         buffer[idx] = file.get();
         std::cout<<buffer[idx];
         idx+=1;
@@ -354,7 +389,6 @@ void readLine(){
     if(strstr(buffer,path)){
         char car = file.get();
         while(car!= '>'){
-            std::cout<<car;
             if(car == 'd'){
                 car = file.get();
                 if(car == '='){
@@ -365,24 +399,29 @@ void readLine(){
                     while(car != '"') {
                         std::cout<<car<<" here"<<std::endl;
                         char command = car;
-
                         car = file.get();
+
+
+
                         short i = 0;
 
                         bool first = true;
                         bool neg = false;
                         //Assume that the cordinates for the 'M' go till the next character, since that will store the values
-                        while (int(car) < int('A') and car != '"') {
+                        while ((int(car) < int('A') ) and car != '"') {
                             std::cout<<car;
                             if (car == '.') {
-                                first = false;
                                 car = file.get();
+                                while(car == '\n' or car == '\t')
+                                    car = file.get();
                                 std::cout<<car;
+                                neg = false;
                                 while (int(car) <= int('9') and int(car) >= '0') {
                                     car = file.get();
+                                    while(car == '\n' or car == '\t')
+                                        car = file.get();
                                     std::cout<<car;
                                 }
-
                             } else {
                                 if (car < '0') {
                                     neg = false;
@@ -399,6 +438,8 @@ void readLine(){
                                         i++;
                                     }
                                     car = file.get();
+                                    while(car == '\n' or car == '\t')
+                                        car = file.get();
                                     std::cout<<car;
                                 }
                                 path_array[i] *= 10;
@@ -408,7 +449,11 @@ void readLine(){
                                     path_array[i] += (int(car) - int('0'));
                                 }
                                 car = file.get();
+                                while(car == '\n' or car == '\t')
+                                    car = file.get();
+                                std::cout<<car;
                             }
+                            first = false;
                         }
                         std::cout<<std::endl;
                         for (int a = 0; a < 8; a++) {
@@ -431,59 +476,77 @@ void readLine(){
         }
         int initial_x = 0;
         int initial_y =0;
-        char cur_char = file.get();
+        char cur_char;
+        for (int i = 0; i < 6; i++)
+            cur_char = file.get();
+
 //      //TODO polyline parsing
         //Just going to treat it as a line array
         //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
         //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
         while(cur_char != '>'){
             if(cur_char == 'p'){
-                for(int i =0; i < 6; i++)
-                    cur_char = file.get();
-                if(cur_char == '='){
-                    file.get();
+                std::cout<<std::endl;
+                for(int i =0; i < 6; i++) {
                     cur_char = file.get();
                     std::cout<<cur_char;
-                short idx_line_arr = 0;
-                while(cur_char != '"'){
-
-                    short sign  = 1;
-                    if(cur_char == '-'){
-                        sign=-1;
-
+                }
+                std::cout<<std::endl;
+                if(cur_char == '='){
+                    cur_char = file.get();
+                    std::cout<<cur_char;
+                    while(cur_char == '\t' or cur_char == '\n')
                         cur_char = file.get();
                         std::cout<<cur_char;
-                    }
-                    while(cur_char !=' ' and cur_char != ','){
-                        if(cur_char =='.'){
-                            while(cur_char != ',' and cur_char != ' '){
-                                //Choping off the decimal for now
-                                cur_char = file.get();
-                                std::cout<<cur_char;
-                            }
-                        }
-                        else {
-                            line_array[idx_line_arr] *= 10;
-                            line_array[idx_line_arr] += (int(cur_char) - int('0'))*sign;
+                    cur_char = file.get();
+                    std::cout<<cur_char;
+                    std::cout<<std::endl;
+                    short idx_line_arr = 0;
+                    while(cur_char != '"'){
+                        short sign  = 1;
+                        if(cur_char == '-'){
+                            sign=-1;
+
                             cur_char = file.get();
                             std::cout<<cur_char;
                         }
-                    }
-                    cur_char = file.get();
-                    idx_line_arr+=1;
-                    if(idx_line_arr > 3){
-                        if(initial_x == 0 and initial_y == 0){
-                            initial_x = line_array[0];
-                            initial_y = line_array[1];
+                        while(cur_char !=' ' and cur_char != ',' and cur_char != '\t'){
+                            if(cur_char =='.'){
+                                while(cur_char != ',' and cur_char != ' '){
+                                    //Choping off the decimal for now
+                                    cur_char = file.get();
+                                    while(cur_char == '\t' or cur_char == '\n')
+                                        cur_char = file.get();
+                                    std::cout<<cur_char;
+                                }
+                            }
+                            else {
+                                line_array[idx_line_arr] *= 10;
+                                line_array[idx_line_arr] += (int(cur_char) - int('0'))*sign;
+                                cur_char = file.get();
+                                while(cur_char == '\t' or cur_char == '\n')
+                                    cur_char = file.get();
+                                std::cout<<cur_char;
+                            }
                         }
-                        line_command();
-                        line_array[0] = line_array[2];
-                        line_array[1] = line_array[3];
-                        line_array[2] = 0;
-                        line_array[3] = 0;
-                        idx_line_arr = 2;
+                        cur_char = file.get();
+
+                        while(cur_char == '\t' or cur_char == '\n')
+                                cur_char = file.get();
+                        idx_line_arr+=1;
+                        if(idx_line_arr > 3){
+                            if(initial_x == 0 and initial_y == 0){
+                                initial_x = line_array[0];
+                                initial_y = line_array[1];
+                            }
+                            line_command();
+                            line_array[0] = line_array[2];
+                            line_array[1] = line_array[3];
+                            line_array[2] = 0;
+                            line_array[3] = 0;
+                            idx_line_arr = 2;
+                        }
                     }
-                }
                 if(strstr(buffer,polygon)){
                     line_array[2] = initial_x;
                     line_array[3] = initial_y;
@@ -509,6 +572,8 @@ void readLine(){
                 const short x_or_y =  int(cur_char)-int('x');
                 cur_char = file.get();
                 std::cout<<cur_char;
+                while(cur_char == '\t' or cur_char == '\n')
+                    cur_char = file.get();
                 if(cur_char == '1' or cur_char == '2'){
                     // if the value is 2, set equal to 2, else should be 0
                     const short one_or_two = (int(cur_char)-int('1'))*2;
@@ -524,7 +589,7 @@ void readLine(){
             }
             cur_char = file.get();
         }}
-    else if (strstr(buffer, circle)){
+    else if (strstr(buffer, circle) or strstr(buffer, ellipse)){
         for(int i = 0; i < 3; i++){
             circle_array[i] = 0;
         }
@@ -544,11 +609,21 @@ void readLine(){
                 }
             }
             if(cur_char == 'r'){
+                int x_or_y =0;
+                bool is_ellipse = 0;
+                if(file.peek() == 'x' or file.peek() == 'y'){
+                    cur_char = file.get();
+                    x_or_y = int(cur_char == 'y');
+                    is_ellipse=true;
+                }
                 std::cout<<cur_char;
                 if(file.peek() == '=' ){
-                    cur_char = get_num_from_quote(circle_array, 2);
+                    cur_char = get_num_from_quote(circle_array, 2+x_or_y);
                     std::cout<<cur_char;
-                    circle_command();
+                    if( not( is_ellipse) or x_or_y){
+                        circle_command();
+                    }
+
                 }
             }
             cur_char = file.get();
@@ -564,18 +639,32 @@ void readLine(){
         std::cout<<cur_char;
         //<rect x="18.5" y="19.5" fill="#FFFFFF" width="272.5" height="23"/
         while(cur_char != '>'){
-            if(cur_char == 'x' or cur_char == 'y' ){
-                if ( file.peek() =='='){
+            if(cur_char == 's'){
+                for(int i=0; i< 8; i++){
+                    cur_char = file.get();
+                    std::cout<<cur_char;
+                }
+                std::cout<<std::endl;
+            }
+            if(cur_char == 'x' or  cur_char == 'y' ){
+                    std::cout<<cur_char<<std::endl;
+
                     cur_char = get_num_from_quote(rect_array,int(cur_char == 'y'));
                     std::cout<<cur_char;
                 }
-            }
             else if(cur_char == 'w' or cur_char == 'h'){
-                for(int i = 0; i < 4 + (cur_char == 'h'); i++) {
-                    file.get();
+                //height
+                //width
+                int w_or_h = int('h' == cur_char);
+                for(int i = 0; i < 4 + w_or_h; i++) {
+                    cur_char = file.get();
+                    std::cout<<cur_char;
+                    while(cur_char == '\t' or cur_char == '\n')
+                        cur_char = file.get();
                 }
+                std::cout<<std::endl;
                 if(file.peek() == '=') {
-                    int w_or_h = int('h' == cur_char);
+
                     //Code is starting to get alittle silly at 2 AM
                     cur_char = get_num_from_quote(rect_array, w_or_h + 2);
                     std::cout << cur_char;
@@ -585,73 +674,19 @@ void readLine(){
                 }
             }
             cur_char = file.get();
+            while(cur_char == '\t' or cur_char == '\n')
+                cur_char = file.get();
             std::cout<<cur_char;
         }
         file.get();
+        std::cout<<cur_char;
     }
-    else if(strstr(begining_of_string,polyline) or strstr(begining_of_string,polygon)){
-            for(int i = 0; i <4; i++) {
-                line_array[i] = 0;
-            }
-            int initial_x = 0;
-            int initial_y =0;
-//      //TODO polyline parsing
-            //Just going to treat it as a line array
-            //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
-            //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
-            while(file.peek() != '>'){
-                if(buffer[idx] == 'p' and buffer[idx+6] == '='){
-                    if(strstr(begining_of_string,polygon)){
-
-                    }
-                    idx+=8;
-                    short idx_line_arr = 0;
-                    while(file.peek() != '"'){
-
-                        short sign  = 1;
-                        if(file.peek() == '-'){
-                            sign=-1;
-                            file.get();
-                        }
-                        while(file.peek() !=' ' and file.peek() != ','){
-                            if(file.peek() =='.'){
-                                while(file.peek() != ',' and file.peek() != ' '){
-                                    //Choping off the decimal for now
-                                    file.get();
-                                }
-                            }
-                            else {
-                                line_array[idx_line_arr] *= 10;
-                                line_array[idx_line_arr] += (int(buffer[idx]) - int('0'))*sign;
-                                file.get();
-                            }
-                        }
-                        file.get();
-                        idx_line_arr+=1;
-                        if(idx_line_arr > 3){
-                            if(initial_x == 0 and initial_y == 0){
-                                initial_x = line_array[0];
-                                initial_y = line_array[1];
-                            }
-                            line_command();
-                            line_array[0] = line_array[2];
-                            line_array[1] = line_array[3];
-                            line_array[2] = 0;
-                            line_array[3] = 0;
-                            idx_line_arr = 2;
-                        }
-                    }
-                    if(strstr(begining_of_string,polygon)){
-                        line_array[2] = initial_x;
-                        line_array[3] = initial_y;
-                        line_command();
-                    }
-                }
-                file.get();
-            }
-            file.get();
-        }
+    else if(strstr(buffer,"<g>") or strstr(buffer,"</g>")){
+        std::cout<<"<g> fuck";
+        return;
+    }
     else {
+
         while(file.get() != '>' and not file.eof()){
         }
     }
@@ -662,7 +697,7 @@ void readLine(){
 int main(void){
     myFile.open("./example.csv");
     myFile<<"X,Y\n";
-    file.open("/Users/elliothagyard/Documents/Untitled-1.svg",std::fstream::in);
+    file.open("/Users/elliothagyard/Documents/extension-base-Tslot.svg",std::fstream::in);
     while( not file.eof()){
         readLine();
     }

@@ -19,4 +19,5 @@ plt.gca().invert_yaxis()
 for i in n_arr:
     ax = fig.add_subplot(1, 1, 1)
     ax.plot(i[0],i[1])
+plt.gca().set_aspect("equal")
 plt.show()
