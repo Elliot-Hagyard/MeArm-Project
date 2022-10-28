@@ -815,8 +815,8 @@ void loop()
     while (file)
     {
         readLine();
-        file.close();
     }
+    file.close();
     while (1)
         ;
 }
