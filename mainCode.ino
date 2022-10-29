@@ -6,18 +6,18 @@ Servo middle, left, right, claw ;  // creates 4 "servo objects"
  int rightPin = 9;
  int clawPin = 6;
 
- double armOneLength = 82.6;
- double armTwoLength = 82.6;
+ double armOneLength = 81;
+ double armTwoLength = 81;
 
  double xLoc = 0;
  double yLoc = 0;
  
- double armHeight;
+ double armHeight = 100;
  double clawLeng = 50;
  
- double middleRot = 0;
+ double middleRot = 90;
  double rightMotorRot = 90;
- double leftMotorRot = 0;
+ double leftMotorRot = 90;
 
 void setup() 
 { 
@@ -30,186 +30,79 @@ void setup()
   delay(500);
   claw.attach(clawPin);  // attaches the servo on pin 6 to the claw object
   delay(500);
-  
-  middle.write(0);
-  
-  Serial.println("Start up at 0");
-  polar(100,0,true);
-  delay(100);
+
+  middle.write(middleRot);
+  right.write(rightMotorRot);
+  left.write(leftMotorRot);
+  delay(1000);
 }
 
 void loop() 
 { 
-
-  //middle.write(10); // sets the servo position according to the value(degrees)
-  //left.write(70); // does the same
-  //right.write(90); // and again
-    claw.write(140);
-  //rightMoterRot = 120;
-  //right.write(rightMoterRot);
+ claw.write(130);
+ int test[][2] ={
+    {25,100},
+    {25,50},
+    {0,50},
+    {0,100},
+    {0,50},
+    {-25,50},
+    {-25,100},
+    {25,100},
+    {25,50},
+    {25,50},
+    };
     Serial.println("Starting");
-    for(int i = 0; i < 100; i += 1)
-    {
-        goToLocation(100,i,true);
-        delay(100);
-    }
-    delay(1000);
-    for(int i = 100; i > 0; i -= 1)
-    {
-        goToLocation(100,i,true);
-        delay(100);
-    }
- delay(1000);
-    //polar(100,100);
- 
-  
-  delay(1000); // doesn't constantly update the servos which can fry them
-  
-}
+    int rows = (sizeof(test) / sizeof(int))/2;
 
-//This will travel to zero and travel back
-void goToZero()
-{
-  double startXLoc = xLoc;
-  double startYLoc = yLoc;
-  polar(xLoc,yLoc,true);
-  
-  stepTravel(100,0,true);
-  
-  stepTravel(startXLoc,startYLoc,true);
-  
-//  bool done = false;
-//  
-//  while(!done)
-//  {
-//    if(xLoc < 100)
-//    {
-//      xLoc += .5;
-//    }
-//    else
-//    {
-//      xLoc -= .5; 
-//    }
-//
-//    if(yLoc < 0)
-//    {
-//      yLoc +=.5;
-//    }
-//    else
-//    {
-//       yLoc -= .5;
-//    }
-//     polar(xLoc,yLoc,true);
-//     delay(10);
-//     
-//        if(((xLoc -.6) <= 100 && xLoc>100)|| ((xLoc +.6) >= 100 && xLoc<100))
-//     {
-//     
-//       if((yLoc -.6 <= 0 && yLoc>0) || ((yLoc +.6) >= 0 && yLoc<0))
-//      {
-//    
-//        polar(100,0,true);
-//        delay(100);
-//        polar(startXLoc,startYLoc,true);
-//        delay(100);
-//        done = true;
-//      }
-//     }
-//  }
-}
-
-void goToLocation(float newX, float newY, bool up)
-{
-  Serial.println("Go To Zero");
-  goToZero();
-  Serial.println("Back From Zero");
-  bool done = false;
-  delay(2000);
-
-  stepTravel(newX,newY,up);
-  
-//  while(!done)
-//  {
-//
-//    if(xLoc < newX)
-//    {
-//      xLoc += .5;
-//    }
-//    else
-//    {
-//      xLoc -= .5;
-//    }
-//
-//    if(yLoc < newY)
-//    {
-//      yLoc += .5;
-//    }
-//    else
-//    {
-//      yLoc -= .5; 
-//    }
-//     Serial.print("Going To New Location: ");
-//     Serial.print(xLoc);
-//     Serial.print(", ");
-//     Serial.println(yLoc);
-//     polar(xLoc,yLoc,true);
-//     delay(100);
-//     
-//     if(((xLoc -.5) <= newX && xLoc>newX)|| ((xLoc +.5) >= newX && xLoc<newX))
-//     {
-//       if((yLoc -.5 <= newY && yLoc>newY) || ((yLoc +.5) >= newY && yLoc<newY))
-//      {
-//        polar(newX,newY,false);
-//        done = true;
-//      }
-//     }
-//  }
-}
-
-//This will slowly travel to the location passed to it
-void stepTravel(double newX, double newY, bool up)
-{
-  bool done = false;
-  delay(1000);
-  
-  while(!done)
-  {
-    if(xLoc < newX)
-    {
-      xLoc += .5;
-    }
-    else
-    {
-      xLoc -= .5;
-    }
-
-    if(yLoc < newY)
-    {
-      yLoc += .5;
-    }
-    else
-    {
-      yLoc -= .5; 
-    }
-     Serial.print("Going To New Location: ");
-     Serial.print(xLoc);
-     Serial.print(", ");
-     Serial.println(yLoc);
+     Serial.println("Running set 1");
+    polar(test[0][0],test[0][1],true);
      
-     polar(xLoc,yLoc,up);
-     delay(100);
-     //abs(xLoc-newX) <= .5
-     if(((xLoc -.5) <= newX && xLoc>newX)|| ((xLoc +.5) >= newX && xLoc<newX))
-     {
-        //abs(yLoc-newY) <= .5
-        if((yLoc -.5 <= newY && yLoc>newY) || ((yLoc +.5) >= newY && yLoc<newY))
-        {
-          polar(newX,newY,false);
-          done = true;
-        }
-     }
-  }
+    for(int i = 0; i < rows-1; i++)
+    {
+      double newXLoc = xLoc;
+      double newYLoc = yLoc;
+      while(abs(test[i][0] - newXLoc) >= 1 || abs(test[i][1] - newYLoc) >= 1 )
+      {
+      double xDif = abs(test[i][0] - newXLoc);
+      double yDif = abs(test[i][1] - newYLoc);
+      
+      int xNegative = (test[i][0] - newXLoc)  < 0 ? -1 : 1;
+      int yNegative  = (test[i][1] - newYLoc)    < 0 ? -1 : 1;
+      
+        double maxDif = max(xDif,yDif);
+        newXLoc += xDif/maxDif * xNegative;
+        newYLoc += yDif/maxDif * yNegative;
+
+        Serial.print(xLoc);
+        Serial.print(" - ");
+        Serial.println(xDif);
+        Serial.print(yLoc);
+        Serial.print(" - ");
+        Serial.println(yDif);
+ 
+       
+       polar(newXLoc,newYLoc,true);
+       polar(newXLoc,newYLoc,false);
+       polar(newXLoc,newYLoc,true);
+       polar(test[0][0],test[0][1],true);
+       polar(newXLoc,newYLoc,true);
+       
+       //polar(xLoc,yLoc,true);
+      }
+      
+      
+       //polar(test[i][0],test[i][1],true);
+       //polar(0,50,true);
+       delay(10);
+    }
+      polar(test[rows-1][0],test[rows-1][1],true);
+  
 }
+
+
+
+
 
 //The will go straight to the location except for
 //The hight of the arm and the middle rotating motors.
@@ -222,6 +115,12 @@ void polar(double x, double y, bool up)
 
   //Calculate needed length of r
   float r = sqrt(pow(x,2)+pow(y,2));
+
+  //r is not to go futher than 130
+  if(r> 150)
+  {
+    r = 150;
+  }
   
   double rotation;
   
@@ -239,126 +138,166 @@ void polar(double x, double y, bool up)
   //This is location of the rotational value
   double newMiddleRot = rotation + 90;
 
-  //r is not to go futher than 130
-  if(r> 130)
-  {
-    r = 130;
-  }
+ 
+  int goLocY = -13;
+  
+  
 
-  //This will slowly move to the rotation
-  bool done = false;
-  while(!done)
+ 
+   
+  if(r<45)
   {
-    //This will increment to the location
-    if(middleRot<newMiddleRot)
-    {
-      middleRot +=.5;
-    }
-    else
-    {
-      middleRot -=.5;
-    }
-    
-    middle.write(middleRot);
-    delay(100);
-    if(abs(newMiddleRot - middleRot) <= .5)
-    {
-      middle.write(newMiddleRot);
-      delay(100);
-      middleRot = newMiddleRot;
-      done = true;
-    }
+    r = 45;
   }
-
-  //Test if the arm is to go up or down
-  if(up == true)
+  
+  if(r <= 40)
   {
-    //Go from current armHeight to top
-    for(int i = armHeight; i < 100; i++)
-    {
-      goLoc(r,i);
-      delay(100);
-    }
+    Serial.println("Lv 1");
+    goLocY = -8;
+  }
+  else if(r <= 50)
+  {
+    Serial.println("Lv 2");
+    goLocY = -9;
+  }
+  else if(r <= 60)
+  {
+    Serial.println("Lv 3");
+    goLocY = -10;
+  }
+  else if(r <= 80)
+  {
+    Serial.println("Lv 4");
+   goLocY = -20; 
   }
   else
   {
-    //Go from current armHeight to bottom
-    for(int i = armHeight; i > 0; i -= 2)
-    {
-      goLoc(r,i);
-      delay(100);
-    }
-
-  }
-  delay(100);
-}
-
-void goLoc(double x, double y)
-{
-  armHeight = y;
-  if(x > 25)
-  {
-    y = y-20;
+    Serial.println("Lv 5");
+   goLocY = -20;  
   }
   
-  if(x> 150)
+  if(up)
   {
-     x = 150;
+    goLocY = 30;
   }
-  if(x<30)
+  
+  if(armHeight != 30 && goLocY == 30)
   {
-    x = 30;
+    right.write(90);
+    rightMotorRot = 90;
+    leftMotorRot = 90;
+    left.write(90);
+    delay(300);
   }
+  
+   //GOLOC FUNCTION
+  armHeight = goLocY;
   double b = armOneLength;
   double c = armTwoLength;
   
-  double aLength = sqrt((x*x)+(y*y));
+  double aLength = sqrt((r*r)+(goLocY*goLocY));
    
   double topSec = (pow(b,2))+(pow(c,2))-pow(aLength,2);
   double total = topSec/(2*b*c);
   double aAngle = (acos(total)*(180/PI));
 
   double bTotal = (pow(c,2) + pow(aLength,2) - pow(b,2)) / (2*c*aLength);
-  double bAngle = 180 - (acos(bTotal)*(180/PI)) - (asin(y/aLength)*(180/PI));
+  double bAngle = 180 - (acos(bTotal)*(180/PI)) - (asin(goLocY/aLength)*(180/PI));
 
+  double newRightRot = bAngle;
+  double newLeftRot = 90 - (rightMotorRot-aAngle);
 
-  rightMotorRot = bAngle;
-  Serial.println(rightMotorRot);
-  right.write(rightMotorRot);
+  double MiddleDif = abs(middleRot - newMiddleRot);
+  double RightDif = abs(rightMotorRot - bAngle);
+  double LeftDif = abs(leftMotorRot - newLeftRot);
   
-  topRot(aAngle);
-  delay(100);
-}
+  int MiddleNegative = (newMiddleRot - middleRot)  < 0 ? -1 : 1;
+  int RightNegative  = (bAngle - rightMotorRot)    < 0 ? -1 : 1;
+  int LeftNegative   = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
 
-//This will set the angle of the top triangle
-void topRot(double angle)
-{
-    leftMotorRot = 90 - (rightMotorRot-angle);
+  double maxDif = max(MiddleDif,RightDif);
+  maxDif = max(LeftDif,maxDif);
+  
+  while(maxDif > 2)
+  {
+     newLeftRot = 90 - (rightMotorRot-aAngle);
+
+     MiddleDif = abs(middleRot - newMiddleRot);
+     RightDif = abs(rightMotorRot - bAngle);
+     LeftDif = abs(leftMotorRot - newLeftRot);
+  
+    MiddleNegative = (newMiddleRot - middleRot)  < 0 ? -1 : 1;
+    RightNegative  = (bAngle - rightMotorRot)    < 0 ? -1 : 1;
+    LeftNegative   = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;  
+
+    maxDif = max(MiddleDif,RightDif);
+    maxDif = max(LeftDif,maxDif);
+   
+    middleRot += (MiddleDif/maxDif)*MiddleNegative;
+    middle.write(middleRot);
+    
+    rightMotorRot += (RightDif/maxDif)*RightNegative;
+    right.write(rightMotorRot);
+
+    leftMotorRot += (LeftDif/maxDif)*LeftNegative;
     left.write(leftMotorRot);
-}
+    
+    delay(20);
+    //delay(20);
+  }
+  
+  middle.write(newMiddleRot);
+  left.write(newLeftRot);
+  right.write(bAngle);
+  
+  middleRot = newMiddleRot;
+  leftMotorRot = newLeftRot;
+  rightMotorRot = bAngle;
 
-void rightMotor(double angle)
-{
-  rightMotorRot = angle;
-  if(angle < 45)
+//      Serial.print("Middle");
+//    Serial.println(middleRot);
+//   Serial.print("Right");
+//    Serial.println(rightMotorRot);
+//    Serial.print("Left");
+//    Serial.println(leftMotorRot);
+  //delay(100);
+  
+  //Test if the arm is to go up or down
+  if(up == true)
   {
-    right.write(45);
+    //Go from current armHeight to top
+    for(int i = armHeight; i < 100; i+= 50)
+    {
+      if(i > 100)
+      {
+        i == 100;
+      }
+      //goLoc(r,i);
+      //delay(100);
+    }
   }
   else
   {
-    right.write(angle);
-  }
-}
+    //Go from current armHeight to bottom
+    for(int i = armHeight; i > 0; i -= 50)
+    {
+      
+      if(i < 0)
+      {
+        i == 0;
+      }
+      //goLoc(r,i);
+      //delay(100);
+    }
 
-void leftMotor(double angle)
-{
-  leftMotorRot = angle;
-  if(angle > 100)
+  }
+  if(up == true)
   {
-    left.write(100);
+    //goLoc(r,100);
   }
   else
   {
-    left.write(angle);
+    //goLoc(r,0);
   }
-} //Line 364
+  //delay(100);
+}
