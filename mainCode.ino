@@ -6,14 +6,14 @@ Servo middle, left, right, claw ;  // creates 4 "servo objects"
  int rightPin = 9;
  int clawPin = 6;
 
- double armOneLength = 81;
- double armTwoLength = 81;
+ double armOneLength = 80;
+ double armTwoLength = 80;
 
  double xLoc = 0;
  double yLoc = 0;
  
  double armHeight = 100;
- double clawLeng = 50;
+ //double clawLeng = 50;
  
  double middleRot = 90;
  double rightMotorRot = 90;
@@ -41,16 +41,12 @@ void loop()
 { 
  claw.write(130);
  int test[][2] ={
-    {25,100},
-    {25,50},
-    {0,50},
-    {0,100},
-    {0,50},
-    {-25,50},
-    {-25,100},
-    {25,100},
-    {25,50},
-    {25,50},
+    {-10,0},
+    {10,0},
+    {10,100},
+    {-10,100},
+    {-10,0},
+    {-10,0},
     };
     Serial.println("Starting");
     int rows = (sizeof(test) / sizeof(int))/2;
@@ -115,7 +111,7 @@ void polar(double x, double y, bool up)
 
   //Calculate needed length of r
   float r = sqrt(pow(x,2)+pow(y,2));
-
+  r += 70;
   //r is not to go futher than 130
   if(r> 150)
   {
@@ -134,10 +130,10 @@ void polar(double x, double y, bool up)
   {
     rotation = 0;
   }
-
+  
   //This is location of the rotational value
   double newMiddleRot = rotation + 90;
-
+  
  
   int goLocY = -13;
   
