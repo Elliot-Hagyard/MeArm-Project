@@ -1,6 +1,6 @@
 #include "SD.h"
 #include "string.h"
-
+#include "Servo.h"
 File file;
 const int buffer_len = 11;
 char buffer[buffer_len];
@@ -11,14 +11,32 @@ int line_array[4] = {0, 0, 0, 0};
 int circle_array[4] = {0, 0, 0, 0};
 int rect_array[4] = {0, 0, 0, 0};
 char previous_command;
-const short fidelity = 5;
-const short circle_fidelity = 10;
+const uint8_t fidelity = 5;
+const uint8_t circle_fidelity = 10;
 // Just a char array
 // Need to retain this info for lower case commands in svg
-float cur_pos[2];
+
+Servo middle, left, right, claw; // creates 4 "servo objects"
+int middlePin = 11;
+int leftPin = 10;
+int rightPin = 9;
+int clawPin = 6;
+
+double armOneLength = 80;
+double armTwoLength = 80;
+
+double xLoc = 0;
+double yLoc = 0;
+
+double armHeight = 100;
+// double clawLeng = 50;
+
+double middleRot = 90;
+double rightMotorRot = 90;
+double leftMotorRot = 90;
+
 float initial_points[2];
 float previous_bezier[2];
-char begining_of_string[10];
 
 static const short x = 0;
 const short y = 1;
@@ -29,6 +47,7 @@ const char line[5] = "line";
 const char polygon[8] = "polygon";
 const char circle[7] = "circle";
 const char ellipse[8] = "ellipse";
+void polar(double x, double y, bool up);
 
 void setup()
 {
@@ -63,159 +82,278 @@ void setup()
     //    Serial.println("error opening test.txt");
     //  }
 }
+void draw_line(float newX, float newY)
+{
+    double newXLoc = xLoc;
+    double newYLoc = yLoc;
+    while (abs(newX - newXLoc) >= 1 || abs(newY - newYLoc) >= 1)
+    {
+        double xDif = abs(newX - newXLoc);
+        double yDif = abs(newY - newYLoc);
 
+        int xNegative = (newX - newXLoc) < 0 ? -1 : 1;
+        int yNegative = (newY - newYLoc) < 0 ? -1 : 1;
+
+        double maxDif = max(xDif, yDif);
+        newXLoc += xDif / maxDif * xNegative;
+        newYLoc += yDif / maxDif * yNegative;
+
+        polar(newXLoc, newYLoc, true);
+        polar(newXLoc, newYLoc, false);
+        polar(newXLoc, newYLoc, true);
+        polar(newX, newY, true);
+        polar(newXLoc, newYLoc, true);
+
+        // polar(xLoc,yLoc,true);
+    }
+
+    // polar(test[i][0],test[i][1],true);
+    // polar(0,50,true);
+}
 void line_command()
 {
-    // TODO: Read from the global line_array and then make the mearm actually draw it
-    Serial.print("x1: ");
+    // Serial.print(F("x1: "));
+    // Serial.println(line_array[0]);
+    // Serial.print(F("y1: "));
+    // Serial.println(line_array[1]);
+    // Serial.println();
+    // Serial.print(F("x2: "));
+    // Serial.println(line_array[2]);
+    // Serial.print(F("y2: "));
+    // Serial.println(line_array[3]);
+    Serial.println("Calling polar with params:");
     Serial.println(line_array[0]);
-    Serial.print("y1: ");
-    Serial.println(line_array[1]);
-    Serial.println();
-    Serial.print("x2: ");
-    Serial.println(line_array[2]);
-    Serial.print("y2: ");
-    Serial.println(line_array[3]);
-    // goLoc ); "L," ); line_array[0] ); "," ); line_array[1] ); "\n");
-    // goLoc ); "L," ); line_array[2] ); "," ); line_array[3] ); "\n");
-    // goLoc ); "L," ); line_array[0] ); "," ); line_array[1] ); "\n");
-    // goLoc ); "L," ); line_array[2] ); "," ); line_array[3] ); "\n");
+    Serial.println(line_array[0]);
+    Serial.println(false);
+    polar(line_array[0], line_array[1], false);
+    polar(line_array[2], line_array[3], false);
+    polar(xLoc, yLoc, true);
+    // polar ); "L," ); line_array[2] ); "," ); line_array[3] ); "\n");
     // goLoc);"e\n");
-    cur_pos[1] = line_array[3];
-    cur_pos[0] = line_array[2];
+}
+void polar(double x, double y, bool up)
+{
+    // Updates xLoc and yLoc
+    xLoc = x;
+    yLoc = y;
+    Serial.println(x);
+    // Calculate needed length of r
+    double r = sqrt(pow(x, 2) + pow(y, 2));
+    double rotation = asin(x / r) * (180 / M_PI) + 90;
+    r -= 8;
+    // r is not to go futher than 130
+    Serial.println(r);
+
+    // This is location of the rotational value
+    double newMiddleRot = rotation;
+
+    int goLocZ = 0;
+
+    if (up)
+    {
+        goLocZ = 30;
+    }
+    if (armHeight != 30 && goLocZ == 30)
+    {
+        rightMotorRot = 90;
+        leftMotorRot = 90;
+    }
+
+    // GOLOC FUNCTION
+    armHeight = goLocZ;
+    double b = armOneLength;
+    double c = armTwoLength;
+
+    double aLength = sqrt((r * r) + (goLocZ * goLocZ));
+
+    double topSec = 1 - (aLength * aLength / (2 * b * b));
+    double aAngle = (acos(topSec) * (180 / M_PI));
+
+    double bAngle = 180 - aAngle - (asin(goLocZ / aLength) * (180 / M_PI));
+
+    double newRightRot = bAngle;
+    double newLeftRot = aAngle;
+
+    double MiddleDif = abs(middleRot - newMiddleRot);
+    double RightDif = abs(rightMotorRot - newRightRot);
+    double LeftDif = abs(leftMotorRot - newLeftRot);
+
+    int MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
+    int RightNegative = (bAngle - rightMotorRot) < 0 ? -1 : 1;
+    int LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
+
+    double maxDif = max(MiddleDif, RightDif);
+    maxDif = max(LeftDif, maxDif);
+
+    while (maxDif > 1)
+    {
+
+        MiddleDif = abs(middleRot - newMiddleRot);
+        RightDif = abs(rightMotorRot - newRightRot);
+        LeftDif = abs(leftMotorRot - newLeftRot);
+
+        MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
+        RightNegative = (newRightRot - rightMotorRot) < 0 ? -1 : 1;
+        LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
+
+        maxDif = max(MiddleDif, RightDif);
+        maxDif = max(LeftDif, maxDif);
+
+        middleRot += (MiddleDif / maxDif) * MiddleNegative;
+        middle.write(leftMotorRot);
+        rightMotorRot += (RightDif / maxDif) * RightNegative;
+        right.write(leftMotorRot);
+        leftMotorRot += (LeftDif / maxDif) * LeftNegative;
+        left.write(leftMotorRot);
+    }
+
+    // delay(20);
+    middleRot = newMiddleRot;
+    middle.write(middleRot);
+    leftMotorRot = newLeftRot;
+    left.write(leftMotorRot);
+    rightMotorRot = bAngle;
+    right.write(rightMotorRot);
+
+    //      std::cout<<"Middle");
+    //    std::cout<<middleRot);
+    //   std::cout<<"Right");
+    //    std::cout<<rightMotorRot);
+    //    std::cout<<"Left");
+    //    std::cout<<leftMotorRot);
+    // delay(100);
 }
 
 void circle_command()
 {
-    Serial.print("cx: ");
+    Serial.print(F("cx: "));
     Serial.print(circle_array[0]);
     Serial.println();
-    Serial.print("cy: ");
+    Serial.print(F("cy: "));
     Serial.println(circle_array[1]);
-    Serial.print("rx: ");
+    Serial.print(F("rx: "));
     Serial.println(circle_array[2]);
-    Serial.print("ry: ");
+    Serial.print(F("ry: "));
     Serial.print(circle_array[3]);
     Serial.println();
     ;
 
-    int r1 = circle_array[2];
-    int r2 = (circle_array[3] == 0) ? r1 : circle_array[3];
+    const unsigned short r1 = circle_array[2];
+    const unsigned short r2 = (circle_array[3] == 0) ? r1 : circle_array[3];
     float i = 0;
     initial_points[0] = circle_array[0] + r1;
     initial_points[1] = circle_array[1];
     while (i < 3.141516 * 2)
     {
-        cur_pos[x] = r1 * cos(i) + circle_array[0];
-        cur_pos[y] = r2 * sin(i) + circle_array[1];
-        // goLoc << "c," << cur_pos[x] << "," << cur_pos[y] << "\n");
+        polar(r1 * cos(i) + circle_array[0], r2 * sin(i) + circle_array[1], false);
         i += (3.1415 * 2) / circle_fidelity;
     }
-    // goLoc<<"c,"<<initial_points[0]<<","<<initial_points[1]<<"\n");
-    // goLoc<<"e\n");
-    cur_pos[0] = initial_points[0];
-    cur_pos[1] = initial_points[1];
+    polar(initial_points[0], initial_points[1], false);
     for (int i = 0; i < 4; i++)
         circle_array[i] = 0;
 }
 void rect_command()
 {
-    const short x = rect_array[0];
-    const short y = rect_array[1];
+    const short new_x = rect_array[0];
+    const short new_y = rect_array[1];
     const short w = rect_array[2];
     const short h = rect_array[3];
-    Serial.print("x:");
+    Serial.print(F("x:"));
     Serial.println(x);
-    Serial.print("y:");
+    Serial.print(F("y:"));
     Serial.println(y);
-    Serial.print("w:");
+    Serial.print(F("w:"));
     Serial.print(w);
 
-    Serial.print("h:");
+    Serial.print(F("h:"));
     Serial.println(h);
-    // Line one (x-w/2, y-h/2) -> (x-w/2,y+h/2)
-    // Line Two (cur_pos[x], cur_pos[y], cur_pos[x]+w, cur_pos[y])
-    // line three (cur_pos[x],cur_pos[y], cur_pos[x], cur_pos[y]-h)
-    // line 4 (cur_pos[x], cur_pos[y], cur_pos[x]-w, cur_pos[y]);
-    line_array[0] = x;
-    line_array[1] = y;
-    line_array[2] = x;
-    line_array[3] = y + h;
+    // I think it should be:
+    //   Line one (x-w/2, y-h/2) -> (x-w/2,y+h/2)
+    //   Line Two (cur_pos[x], cur_pos[y], cur_pos[x]+w, cur_pos[y])
+    //   line three (cur_pos[x],cur_pos[y], cur_pos[x], cur_pos[y]-h)
+    //   line 4 (cur_pos[x], cur_pos[y], cur_pos[x]-w, cur_pos[y])
+    //
+    // But the following seems to place the rectangle in the right spot
+    line_array[0] = new_x;
+    line_array[1] = new_y;
+    line_array[2] = new_x;
+    line_array[3] = new_y + h;
     line_command();
-    line_array[0] = cur_pos[0];
-    line_array[1] = cur_pos[1];
-    line_array[2] = cur_pos[0] + w;
-    line_array[3] = cur_pos[1];
+    line_array[0] = xLoc;
+    line_array[1] = yLoc;
+    line_array[2] = xLoc + w;
+    line_array[3] = yLoc;
     line_command();
-    line_array[0] = cur_pos[0];
-    line_array[1] = cur_pos[1];
-    line_array[2] = cur_pos[0];
-    line_array[3] = cur_pos[1] - h;
+    line_array[0] = xLoc;
+    line_array[1] = yLoc;
+    line_array[2] = xLoc;
+    line_array[3] = yLoc - h;
     line_command();
-    line_array[0] = cur_pos[0];
-    line_array[1] = cur_pos[1];
-    line_array[2] = cur_pos[0] - w;
-    line_array[3] = cur_pos[1];
+    line_array[0] = xLoc;
+    line_array[1] = yLoc;
+    line_array[2] = xLoc - w;
+    line_array[3] = yLoc;
     line_command();
 }
 void cubicBezierCurve(float cX1, float cY1, float cX2, float cY2, float finalX, float finalY)
 {
 
-    Serial.print("Here");
+    Serial.print(F("Cubic_func"));
 
     float i = 0;
-    int index = 0;
-    float starting_x = cur_pos[x];
-    float starting_y = cur_pos[y];
+    float starting_x = xLoc;
+    float starting_y = yLoc;
+    float new_x;
+    float new_y;
     while (i < 1)
     {
-        cur_pos[x] = (1 - i) * (1 - i) * (1 - i) * starting_x + 3 * (1 - i) * (1 - i) * i * cX1 + 3 * (1 - i) * i * i * cX2 + i * i * i * finalX;
-        cur_pos[y] = (1 - i) * (1 - i) * (1 - i) * starting_y + 3 * (1 - i) * (1 - i) * i * cY1 + 3 * (1 - i) * i * i * cY2 + i * i * i * finalY;
+        new_x = (1 - i) * (1 - i) * (1 - i) * starting_x + 3 * (1 - i) * (1 - i) * i * cX1 + 3 * (1 - i) * i * i * cX2 + i * i * i * finalX;
+        new_y = (1 - i) * (1 - i) * (1 - i) * starting_y + 3 * (1 - i) * (1 - i) * i * cY1 + 3 * (1 - i) * i * i * cY2 + i * i * i * finalY;
         i += 1.0 / fidelity;
-        // goLoc << "c," << cur_pos[x] << "," << cur_pos[y] << "\n");
-        index += 1;
+        polar(new_x, new_y, false);
     }
-    cur_pos[0] = finalX;
-    cur_pos[1] = finalY;
-    // goLoc<<"c,"<<cur_pos[x]<<","<<cur_pos[y]<<"\n");
+    polar(finalX, finalY, false);
     previous_bezier[0] = cX2;
     previous_bezier[1] = cY2;
-    // goLoc<<"e\n");
 }
 void quadraticBezierCurve(float cX1, float cY1, float finalX, float finalY)
 {
     float i = 0;
-    float starting_x = cur_pos[x];
-    float starting_y = cur_pos[y];
+    float new_x;
+    float new_y;
+    float starting_x = xLoc;
+    float starting_y = yLoc;
     while (i < 1)
     {
-        cur_pos[x] = (1 - i) * (1 - i) * cur_pos[x] + 2 * (1 - i) * i * cX1 + i * i * finalX;
-        cur_pos[y] = (1 - i) * (1 - i) * cur_pos[y] + 2 * (1 - i) * i * cY1 + i * i * finalY;
+        new_x = (1 - i) * (1 - i) * xLoc + 2 * (1 - i) * i * cX1 + i * i * finalX;
+        new_y = (1 - i) * (1 - i) * yLoc + 2 * (1 - i) * i * cY1 + i * i * finalY;
         // goLoc << "c," << cur_pos[x] << "," << cur_pos[y] << "\n");
-
+        polar(new_x, new_y, false);
         i += 1.0 / fidelity;
     }
-    // goLoc << "e\n");
+    // Lift the pen u
 }
 void path_command(char command)
 {
     if (int(command) >= int('a'))
     {
         // translate the relative commands to be absolute
-        Serial.print(cur_pos[0]);
+        Serial.print(xLoc);
         Serial.print(',');
-        Serial.print(cur_pos[1]);
+        Serial.print(yLoc);
         Serial.println();
         if (command != 'v')
-            for (int i = 0; i < 6; i++)
+            for (short i = 0; i < 3; i++)
             {
-                path_array[i] += cur_pos[i % 2];
-                Serial.print(path_array[i]);
+                path_array[2 * i] += xLoc;
+                path_array[2 * i + 1] = yLoc;
+                Serial.print(path_array[2 * i]);
                 Serial.println();
+                Serial.println(path_array[2 * i + 1]);
             }
         else
         {
-            path_array[0] += cur_pos[1];
+            path_array[0] += yLoc;
         }
     }
     switch (command)
@@ -229,17 +367,15 @@ void path_command(char command)
         // lift_pen(); //placeholder function
         // Path array contains 2 points
         // Move x and y. NOTE X AND Y in the svg are X and Z in our
-        Serial.print("Move");
+        Serial.print(F("Move"));
         Serial.println();
-        Serial.print("x");
+        Serial.print(F("x"));
         Serial.print(path_array[0]);
-        Serial.print('\t');
-        Serial.print("y");
-        Serial.print(path_array[1]);
-        Serial.println();
+        Serial.print(F("'\t'y"));
+        Serial.println(path_array[1]);
+
         // go_to(x,y);
-        cur_pos[x] = path_array[x];
-        cur_pos[y] = path_array[y];
+        polar(path_array[x], path_array[y], true);
         initial_points[x] = path_array[x];
         initial_points[y] = path_array[y];
         break;
@@ -251,8 +387,8 @@ void path_command(char command)
         Serial.println();
 
         {
-            float cX1 = 2 * cur_pos[0] - previous_bezier[0];
-            float cY1 = 2 * cur_pos[1] - previous_bezier[1];
+            float cX1 = 2 * xLoc - previous_bezier[0];
+            float cY1 = 2 * yLoc - previous_bezier[1];
             cubicBezierCurve(cX1, cY1, path_array[0], path_array[1], path_array[2],
                              path_array[3]);
         }
@@ -262,7 +398,7 @@ void path_command(char command)
     case 'c':
     case 'C':
     {
-        Serial.print("cubic curve");
+        Serial.print(F("cubic curve"));
         Serial.println();
         ;
         // Path array should contain 6 points
@@ -281,7 +417,7 @@ void path_command(char command)
     case 'Q':
         // Path array should contain 4 points
         // Also uses the gloabal var of the cur_pos
-        Serial.print("Quadratic Curve");
+        Serial.print(F("Quadratic Curve"));
         Serial.println();
         quadraticBezierCurve(
             path_array[0],
@@ -295,26 +431,25 @@ void path_command(char command)
     {
         // Close path command. I think it just draws a straight line to the iniital point
         // Path array should contain 2 points
-        line_array[x] = cur_pos[x];
-        line_array[y] = cur_pos[y];
+        line_array[x] = xLoc;
+        line_array[y] = yLoc;
         line_array[x + 2] = initial_points[x];
         line_array[y + 2] = initial_points[y];
         line_command();
-        Serial.print("Go to inital x and y");
+        Serial.print(F("Go to inital x and y"));
         Serial.println();
-        ;
         break;
     }
     case 'h':
     case 'H':
     {
         // Just a horiziontal line should contain one point in path array
-        line_array[0] = cur_pos[x]; //
-        line_array[1] = cur_pos[y];
+        line_array[0] = xLoc; //
+        line_array[1] = yLoc;
         line_array[2] = path_array[0];
-        line_array[3] = cur_pos[y];
+        line_array[3] = yLoc;
         line_command();
-        Serial.print("Move across to:");
+        Serial.print(F("Move across to:"));
         Serial.print(path_array[0]);
         Serial.println();
         ;
@@ -325,15 +460,15 @@ void path_command(char command)
     case 'L':
     {
         // contains 2 points in path array
-        line_array[x] = cur_pos[x];        // x
-        line_array[y] = cur_pos[y];        // y
+        line_array[x] = xLoc;              // x
+        line_array[y] = yLoc;              // y
         line_array[x + 2] = path_array[x]; // x_final
         line_array[y + 2] = path_array[y]; // y final
         line_command();
-        Serial.print("Move x:");
+        Serial.print(F("Move x:"));
         Serial.print(path_array[0]);
         Serial.println();
-        Serial.print("Move y:");
+        Serial.print(F("Move y:"));
         Serial.print(path_array[1]);
         Serial.println();
         ;
@@ -344,12 +479,12 @@ void path_command(char command)
     case 'V':
     {
         // path array should have one point
-        line_array[0] = cur_pos[x];    // x
-        line_array[1] = cur_pos[y];    // y
-        line_array[2] = cur_pos[x];    // x_final
+        line_array[0] = xLoc;          // x
+        line_array[1] = yLoc;          // y
+        line_array[2] = xLoc;          // x_final
         line_array[3] = path_array[0]; // y final
         line_command();
-        Serial.print("Move up to:");
+        Serial.print(F("Move up to:"));
         Serial.print(path_array[0]);
         Serial.println();
         // move_to(cur_x, path_ar[0])
@@ -364,7 +499,7 @@ void path_command(char command)
     previous_command = command;
 }
 
-char get_num_from_quote(int num_array[], int index_in_array)
+char get_num_from_quote(int num_array[], const uint8_t index_in_array)
 {
     char cur_char = file.read();
     Serial.print(cur_char);
@@ -427,7 +562,7 @@ void readLine()
     }
     idx = 0;
     Serial.print(file.peek());
-    while ((file.peek() != ' ' and file.peek() != '\n') and idx <= 10 and file)
+    while ((file.peek() != ' ' and file.peek() != '\n') and idx <= 10 and file.available())
     {
         buffer[idx] = file.read();
         Serial.print(buffer[idx]);
@@ -684,7 +819,7 @@ void readLine()
     }
     else if (strstr(buffer, circle) or strstr(buffer, ellipse))
     {
-        for (int i = 0; i < 3; i++)
+        for (unsigned short i = 0; i < 3; i++)
         {
             circle_array[i] = 0;
         }
@@ -797,12 +932,15 @@ void readLine()
     }
     else if (strstr(buffer, "<g>") or strstr(buffer, "</g>"))
     {
-        Serial.print("<g> fuck");
+        for (uint8_t i = 0; i < i++; i++)
+        {
+            buffer[i];
+        }
         return;
     }
     else
     {
-        while (file.read() != '>' and file)
+        while (file.read() != '>' and file.available())
         {
         }
     }
@@ -810,13 +948,201 @@ void readLine()
     return;
 }
 
+void polar(double x, double y, bool up)
+{
+    // Updates xLoc and yLoc
+    xLoc = x;
+    yLoc = y;
+
+    // Calculate needed length of r
+    float r = sqrt(pow(x, 2) + pow(y, 2));
+    r -= 8;
+    // r is not to go futher than 130
+    if (r > 150)
+    {
+        r = 150;
+    }
+
+    double rotation;
+
+    // Calculate needed rotation of the middle
+    // If x is 0 then the rotation is equal to 0
+    if (x != 0)
+    {
+        // 90 <-> -90
+        rotation = asin(x / r) * 180 / PI;
+    }
+    else
+    {
+        rotation = 0;
+    }
+
+    // This is location of the rotational value
+    double newMiddleRot = rotation + 90;
+
+    int goLocZ = -13;
+
+    if (r < 45)
+    {
+        r = 45;
+    }
+
+    if (r <= 40)
+    {
+        Serial.println("Lv 1");
+        goLocZ = -8;
+    }
+    else if (r <= 50)
+    {
+        Serial.println("Lv 2");
+        goLocZ = -9;
+    }
+    else if (r <= 60)
+    {
+        Serial.println("Lv 3");
+        goLocZ = -10;
+    }
+    else if (r <= 80)
+    {
+        Serial.println("Lv 4");
+        goLocZ = -20;
+    }
+    else
+    {
+        Serial.println("Lv 5");
+        goLocZ = -20;
+    }
+
+    if (up)
+    {
+        goLocZ = 30;
+    }
+
+    if (armHeight != 30 && goLocZ == 30)
+    {
+        right.write(90);
+        rightMotorRot = 90;
+        leftMotorRot = 90;
+        left.write(90);
+        delay(300);
+    }
+
+    // GOLOC FUNCTION
+    armHeight = goLocZ;
+    double b = armOneLength;
+    double c = armTwoLength;
+
+    double aLength = sqrt((r * r) + (goLocZ * goLocZ));
+
+    double topSec = (pow(b, 2)) + (pow(c, 2)) - pow(aLength, 2);
+    double total = topSec / (2 * b * c);
+    double aAngle = (acos(total) * (180 / PI));
+
+    double bTotal = (pow(c, 2) + pow(aLength, 2) - pow(b, 2)) / (2 * c * aLength);
+    double bAngle = 180 - (acos(bTotal) * (180 / PI)) - (asin(goLocZ / aLength) * (180 / PI));
+
+    double newRightRot = bAngle;
+    double newLeftRot = 90 - (rightMotorRot - aAngle);
+
+    double MiddleDif = abs(middleRot - newMiddleRot);
+    double RightDif = abs(rightMotorRot - bAngle);
+    double LeftDif = abs(leftMotorRot - newLeftRot);
+
+    int MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
+    int RightNegative = (bAngle - rightMotorRot) < 0 ? -1 : 1;
+    int LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
+
+    double maxDif = max(MiddleDif, RightDif);
+    maxDif = max(LeftDif, maxDif);
+
+    while (maxDif > 2)
+    {
+        newLeftRot = 90 - (rightMotorRot - aAngle);
+
+        MiddleDif = abs(middleRot - newMiddleRot);
+        RightDif = abs(rightMotorRot - bAngle);
+        LeftDif = abs(leftMotorRot - newLeftRot);
+
+        MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
+        RightNegative = (bAngle - rightMotorRot) < 0 ? -1 : 1;
+        LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
+
+        maxDif = max(MiddleDif, RightDif);
+        maxDif = max(LeftDif, maxDif);
+
+        middleRot += (MiddleDif / maxDif) * MiddleNegative;
+        middle.write(middleRot);
+
+        rightMotorRot += (RightDif / maxDif) * RightNegative;
+        right.write(rightMotorRot);
+
+        leftMotorRot += (LeftDif / maxDif) * LeftNegative;
+        left.write(leftMotorRot);
+
+        delay(20);
+        // delay(20);
+    }
+
+    middle.write(newMiddleRot);
+    left.write(newLeftRot);
+    right.write(bAngle);
+
+    middleRot = newMiddleRot;
+    leftMotorRot = newLeftRot;
+    rightMotorRot = bAngle;
+
+    //      Serial.print("Middle");
+    //    Serial.println(middleRot);
+    //   Serial.print("Right");
+    //    Serial.println(rightMotorRot);
+    //    Serial.print("Left");
+    //    Serial.println(leftMotorRot);
+    // delay(100);
+
+    // Test if the arm is to go up or down
+    if (up == true)
+    {
+        // Go from current armHeight to top
+        for (int i = armHeight; i < 100; i += 50)
+        {
+            if (i > 100)
+            {
+                i == 100;
+            }
+            // goLoc(r,i);
+            // delay(100);
+        }
+    }
+    else
+    {
+        // Go from current armHeight to bottom
+        for (int i = armHeight; i > 0; i -= 50)
+        {
+
+            if (i < 0)
+            {
+                i == 0;
+            }
+            // goLoc(r,i);
+            // delay(100);
+        }
+    }
+    if (up == true)
+    {
+        // goLoc(r,100);
+    }
+    else
+    {
+        // goLoc(r,0);
+    }
+    // delay(100);
+}
+
 void loop()
 {
-    while (file)
+    while (file.available())
     {
         readLine();
+        file.close();
     }
-    file.close();
-    while (1)
-        ;
 }
