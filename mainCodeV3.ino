@@ -4,7 +4,7 @@ Servo middle, left, right, claw ;  // creates 4 "servo objects"
  int middlePin = 11;
  int leftPin = 10;
  int rightPin = 9;
- int clawPin = 6;
+ int clawPin = 5;
 
  double armOneLength = 80;
  double armTwoLength = 80;
