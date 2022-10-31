@@ -956,31 +956,45 @@ void polar(double x, double y, bool up)
 
     // Calculate needed length of r
     float r = sqrt(pow(x, 2) + pow(y, 2));
-    r -= 8;
-    // r is not to go futher than 130
-    if (r > 150)
-    {
-        r = 150;
-    }
 
-    double rotation;
+    // r is not to go futher than 130
+    if (r > 145)
+    {
+        Serial.println("MAX");
+        return;
+
+        r = 145;
+    }
+    if (r < 60)
+    {
+        Serial.println("MIN");
+        return;
+    }
+    if (x > 0)
+    {
+        return;
+    }
+    double rotation = 0;
 
     // Calculate needed rotation of the middle
     // If x is 0 then the rotation is equal to 0
     if (x != 0)
     {
-        // 90 <-> -90
-        rotation = asin(x / r) * 180 / PI;
+        rotation = atan(y / x) * 180 / PI;
     }
-    else
-    {
-        rotation = 0;
-    }
+    //  if(y > 0 && x != 0)
+    //  {
+    //    rotation = -(atan((-y)/x) * 180 /PI);
+    //  }
 
     // This is location of the rotational value
     double newMiddleRot = rotation + 90;
+    if (newMiddleRot < 0 || newMiddleRot > 180)
+    {
+        return;
+    }
 
-    int goLocZ = -13;
+    int goLocY = -13;
 
     if (r < 45)
     {
@@ -989,36 +1003,36 @@ void polar(double x, double y, bool up)
 
     if (r <= 40)
     {
-        Serial.println("Lv 1");
-        goLocZ = -8;
+        // Serial.println("Lv 1");
+        goLocY = -8;
     }
     else if (r <= 50)
     {
-        Serial.println("Lv 2");
-        goLocZ = -9;
+        // Serial.println("Lv 2");
+        goLocY = -9;
     }
     else if (r <= 60)
     {
-        Serial.println("Lv 3");
-        goLocZ = -10;
+        // Serial.println("Lv 3");
+        goLocY = -10;
     }
     else if (r <= 80)
     {
-        Serial.println("Lv 4");
-        goLocZ = -20;
+        // Serial.println("Lv 4");
+        goLocY = -20;
     }
     else
     {
-        Serial.println("Lv 5");
-        goLocZ = -20;
+        // Serial.println("Lv 5");
+        goLocY = -20;
     }
 
     if (up)
     {
-        goLocZ = 30;
+        goLocY = 30;
     }
 
-    if (armHeight != 30 && goLocZ == 30)
+    if (armHeight != 30 && goLocY == 30)
     {
         right.write(90);
         rightMotorRot = 90;
@@ -1028,21 +1042,21 @@ void polar(double x, double y, bool up)
     }
 
     // GOLOC FUNCTION
-    armHeight = goLocZ;
+    armHeight = goLocY;
     double b = armOneLength;
     double c = armTwoLength;
 
-    double aLength = sqrt((r * r) + (goLocZ * goLocZ));
+    double aLength = sqrt((r * r) + (goLocY * goLocY));
 
     double topSec = (pow(b, 2)) + (pow(c, 2)) - pow(aLength, 2);
     double total = topSec / (2 * b * c);
     double aAngle = (acos(total) * (180 / PI));
 
     double bTotal = (pow(c, 2) + pow(aLength, 2) - pow(b, 2)) / (2 * c * aLength);
-    double bAngle = 180 - (acos(bTotal) * (180 / PI)) - (asin(goLocZ / aLength) * (180 / PI));
+    double bAngle = 180 - (acos(bTotal) * (180 / PI)) - (asin(goLocY / aLength) * (180 / PI));
 
     double newRightRot = bAngle;
-    double newLeftRot = 90 - (rightMotorRot - aAngle);
+    double newLeftRot = 90 - (newRightRot - aAngle);
 
     double MiddleDif = abs(middleRot - newMiddleRot);
     double RightDif = abs(rightMotorRot - bAngle);
@@ -1057,7 +1071,8 @@ void polar(double x, double y, bool up)
 
     while (maxDif > 2)
     {
-        newLeftRot = 90 - (rightMotorRot - aAngle);
+        claw.write(160);
+        // newLeftRot = 90 - (rightMotorRot-aAngle);
 
         MiddleDif = abs(middleRot - newMiddleRot);
         RightDif = abs(rightMotorRot - bAngle);
@@ -1100,41 +1115,42 @@ void polar(double x, double y, bool up)
     // delay(100);
 
     // Test if the arm is to go up or down
-    if (up == true)
-    {
-        // Go from current armHeight to top
-        for (int i = armHeight; i < 100; i += 50)
-        {
-            if (i > 100)
-            {
-                i == 100;
-            }
-            // goLoc(r,i);
-            // delay(100);
-        }
-    }
-    else
-    {
-        // Go from current armHeight to bottom
-        for (int i = armHeight; i > 0; i -= 50)
-        {
-
-            if (i < 0)
-            {
-                i == 0;
-            }
-            // goLoc(r,i);
-            // delay(100);
-        }
-    }
-    if (up == true)
-    {
-        // goLoc(r,100);
-    }
-    else
-    {
-        // goLoc(r,0);
-    }
+    //  if(up == true)
+    //  {
+    //    //Go from current armHeight to top
+    //    for(int i = armHeight; i < 100; i+= 50)
+    //    {
+    //      if(i > 100)
+    //      {
+    //        i == 100;
+    //      }
+    //      //goLoc(r,i);
+    //      //delay(100);
+    //    }
+    //  }
+    //  else
+    //  {
+    //    //Go from current armHeight to bottom
+    //    for(int i = armHeight; i > 0; i -= 50)
+    //    {
+    //
+    //      if(i < 0)
+    //      {
+    //        i == 0;
+    //      }
+    //      //goLoc(r,i);
+    //      //delay(100);
+    //    }
+    //
+    //  }
+    //  if(up == true)
+    //  {
+    //    //goLoc(r,100);
+    //  }
+    //  else
+    //  {
+    //    //goLoc(r,0);
+    //  }
     // delay(100);
 }
 
