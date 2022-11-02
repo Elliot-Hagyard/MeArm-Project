@@ -1,22 +1,29 @@
 #include "SD.h"
 #include "string.h"
 #include "Servo.h"
+
 File file;
 const int buffer_len = 11;
 char buffer[buffer_len];
+
 // path needs to retain info about the path command after parsing
 float path_array[6] = {0, 0, 0, 0, 0, 0};
+
 // Store the data from a line.
 int line_array[4] = {0, 0, 0, 0};
 int circle_array[4] = {0, 0, 0, 0};
 int rect_array[4] = {0, 0, 0, 0};
+
 char previous_command;
+
 const uint8_t fidelity = 3;
 const uint8_t circle_fidelity = 10;
 // Just a char array
 // Need to retain this info for lower case commands in svg
 
 Servo middle, left, right, claw; // creates 4 "servo objects"
+
+//Motor pins
 int middlePin = 5;
 int leftPin = 6;
 int rightPin = 3;
@@ -25,12 +32,14 @@ int clawPin = 7;
 double armOneLength = 80;
 double armTwoLength = 80;
 
+//Current location of arm
 double xLoc = 0;
 double yLoc = 0;
 
+//Default arm height
 double armHeight = 100;
-// double clawLeng = 50;
 
+//Default motor position
 double middleRot = 90;
 double rightMotorRot = 90;
 double leftMotorRot = 90;
@@ -57,9 +66,9 @@ void setup()
     if (!SD.begin(10))
     {
         Serial.println("initialization failed!");
-        while (1)
-            ;
+        while (1);
     }
+    
     file = SD.open("glasses.svg", FILE_READ);
   
     middle.attach(middlePin); // attaches the servo on pin 11 to the middle object
@@ -75,26 +84,8 @@ void setup()
     right.write(rightMotorRot);
     left.write(leftMotorRot);
     delay(1000);
-    // Apparently, reading the file once before you parse is causing errors
-    //  Serial.println("initialization done.");
-    //
-    //  // open the file. note that only one file can be open at a time,
-    //  // so you have to close this one before opening another.
-    //  file = SD.open("glasses.svg", FILE_READ);
-    //  if (file) {
-    //    Serial.println("test.txt:");
-    //
-    //    // read from the file until there's nothing else in it:
-    //    while (file.available()) {
-    //      Serial.write(file.read());
-    //    }
-    //    // close the file:
-    //    file.close();
-    //  } else {
-    //    // if the file didn't open, print an error:
-    //    Serial.println("error opening test.txt");
-    //  }
 }
+
 void draw_line(float newX, float newY)
 {
     claw.write(170);
@@ -127,21 +118,10 @@ void draw_line(float newX, float newY)
         polar(newXLoc, newYLoc, true);
         polar(100, 100, true);
         polar(newXLoc, newYLoc, true);
-
-        // polar(xLoc,yLoc,true);
     }
 }
 void line_command()
 {
-    // Serial.print(F("x1: "));
-    // Serial.println(line_array[0]);
-    // Serial.print(F("y1: "));
-    // Serial.println(line_array[1]);
-    // Serial.println();
-    // Serial.print(F("x2: "));
-    // Serial.println(line_array[2]);
-    // Serial.print(F("y2: "));
-    // Serial.println(line_array[3]);
     Serial.println("Calling polar with params:");
     Serial.println(line_array[0]);
     Serial.println(line_array[1]);
@@ -153,8 +133,6 @@ void line_command()
     Serial.println(false);
     draw_line(line_array[2], line_array[3]);
     polar(xLoc, yLoc, true);
-    // polar ); "L," ); line_array[2] ); "," ); line_array[3] ); "\n");
-    // goLoc);"e\n");
 }
 
 // The will go straight to the location except for
@@ -162,23 +140,12 @@ void line_command()
 // They will move to their postion slowly.b
 bool polar(double x, double y, bool up)
 {
-    //  Serial.print("Planned: x ");
-    //  Serial.println(x);
-    //  Serial.print("Planned: y ");
-    //  Serial.println(y);
-
     // Updates xLoc and yLoc
     xLoc = x;
     yLoc = y;
 
     x = 145 - x;
     y = 145 - y;
-    //  x*=-1;
-    //  y*=-1;
-    //  Serial.print("Actual: x ");
-    //  Serial.println(x);
-    //  Serial.print("Actual: y ");
-    //  Serial.println(y);
 
     // Calculate needed length of r
     float r = sqrt(pow(x, 2) + pow(y, 2));
@@ -209,48 +176,43 @@ bool polar(double x, double y, bool up)
     {
         rotation = 90 * (x / abs(x));
     }
-    //  if(y > 0 && x != 0)
-    //  {
-    //    rotation = atan(x/y) * 180 /PI;
-    //  }
 
     // This is location of the rotational value
     double newMiddleRot = rotation + 90;
+
+    //If the new rotation is invalid exit out
     if (newMiddleRot < 0 || newMiddleRot > 180)
     {
+        Serial.println("Invalid Rotation");
         return true;
     }
-
+    
     int goLocY = -13;
-
+    
+    //Set minimum distance from arm
     if (r < 45)
     {
         r = 45;
     }
-
+    
     if (r <= 40)
     {
-        // Serial.println("Lv 1");
         goLocY = -8;
     }
     else if (r <= 50)
     {
-        // Serial.println("Lv 2");
         goLocY = -9;
     }
     else if (r <= 60)
     {
-        // Serial.println("Lv 3");
         goLocY = -10;
     }
     else if (r <= 80)
     {
-        // Serial.println("Lv 4");
         goLocY = -20;
     }
     else
     {
-        // Serial.println("Lv 5");
         goLocY = -20;
     }
 
@@ -268,7 +230,6 @@ bool polar(double x, double y, bool up)
         delay(300);
     }
 
-    // GOLOC FUNCTION
     armHeight = goLocY;
     double b = armOneLength;
     double c = armTwoLength;
@@ -299,7 +260,6 @@ bool polar(double x, double y, bool up)
     while (maxDif > 2)
     {
         claw.write(160);
-        // newLeftRot = 90 - (rightMotorRot-aAngle);
 
         MiddleDif = abs(middleRot - newMiddleRot);
         RightDif = abs(rightMotorRot - bAngle);
@@ -322,7 +282,6 @@ bool polar(double x, double y, bool up)
         left.write(leftMotorRot);
 
         delay(10);
-        // delay(20);
     }
 
     middle.write(newMiddleRot);
@@ -333,53 +292,6 @@ bool polar(double x, double y, bool up)
     leftMotorRot = newLeftRot;
     rightMotorRot = bAngle;
     return false;
-
-    //      Serial.print("Middle");
-    //    Serial.println(middleRot);
-    //   Serial.print("Right");
-    //    Serial.println(rightMotorRot);
-    //    Serial.print("Left");
-    //    Serial.println(leftMotorRot);
-    // delay(100);
-
-    // Test if the arm is to go up or down
-    //  if(up == true)
-    //  {
-    //    //Go from current armHeight to top
-    //    for(int i = armHeight; i < 100; i+= 50)
-    //    {
-    //      if(i > 100)
-    //      {
-    //        i == 100;
-    //      }
-    //      //goLoc(r,i);
-    //      //delay(100);
-    //    }
-    //  }
-    //  else
-    //  {
-    //    //Go from current armHeight to bottom
-    //    for(int i = armHeight; i > 0; i -= 50)
-    //    {
-    //
-    //      if(i < 0)
-    //      {
-    //        i == 0;
-    //      }
-    //      //goLoc(r,i);
-    //      //delay(100);
-    //    }
-    //
-    //  }
-    //  if(up == true)
-    //  {
-    //    //goLoc(r,100);
-    //  }
-    //  else
-    //  {
-    //    //goLoc(r,0);
-    //  }
-    // delay(100);
 }
 
 void circle_command()
@@ -1112,15 +1024,13 @@ void readLine()
     return;
 }
 
-
 void loop()
 {
     while (file.available())
     {
-        Serial.print("HEre");
+        Serial.print("Here");
         readLine();
-        
-
     }
-            file.close();
+    
+    file.close();
 }
