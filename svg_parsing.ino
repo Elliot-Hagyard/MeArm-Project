@@ -11,16 +11,16 @@ int line_array[4] = {0, 0, 0, 0};
 int circle_array[4] = {0, 0, 0, 0};
 int rect_array[4] = {0, 0, 0, 0};
 char previous_command;
-const uint8_t fidelity = 5;
-const uint8_t circle_fidelity = 10;
+const uint8_t fidelity = 1;
+const uint8_t circle_fidelity = 1;
 // Just a char array
 // Need to retain this info for lower case commands in svg
 
 Servo middle, left, right, claw; // creates 4 "servo objects"
 int middlePin = 11;
-int leftPin = 10;
+int leftPin = 3;
 int rightPin = 9;
-int clawPin = 6;
+int clawPin = 5;
 
 double armOneLength = 80;
 double armTwoLength = 80;
@@ -47,7 +47,6 @@ const char line[5] = "line";
 const char polygon[8] = "polygon";
 const char circle[7] = "circle";
 const char ellipse[8] = "ellipse";
-void polar(double x, double y, bool up);
 
 void setup()
 {
@@ -62,6 +61,20 @@ void setup()
             ;
     }
     file = SD.open("glasses.svg", FILE_READ);
+  
+    middle.attach(middlePin); // attaches the servo on pin 11 to the middle object
+    delay(500);
+    left.attach(leftPin); // attaches the servo on pin 10 to the left object
+    delay(500);
+    right.attach(rightPin); // attaches the servo on pin 9 to the right object
+    delay(500);
+    claw.attach(clawPin); // attaches the servo on pin 6 to the claw object
+    delay(500);
+  
+    middle.write(middleRot);
+    right.write(rightMotorRot);
+    left.write(leftMotorRot);
+    delay(1000);
     // Apparently, reading the file once before you parse is causing errors
     //  Serial.println("initialization done.");
     //
@@ -86,29 +99,36 @@ void draw_line(float newX, float newY)
 {
     double newXLoc = xLoc;
     double newYLoc = yLoc;
+
+    Serial.print("Actual: x ");
+    Serial.println(newXLoc);
+    Serial.print("Actual: y ");
+    Serial.println(newYLoc);
+
+    double xDif = abs(newX - newXLoc);
+    double yDif = abs(newY - newYLoc);
+
+    int xNegative = (newX - newXLoc) < 0 ? -1 : 1;
+    int yNegative = (newY - newYLoc) < 0 ? -1 : 1;
+
+    double maxDif = max(xDif, yDif);
     while (abs(newX - newXLoc) >= 1 || abs(newY - newYLoc) >= 1)
     {
-        double xDif = abs(newX - newXLoc);
-        double yDif = abs(newY - newYLoc);
 
-        int xNegative = (newX - newXLoc) < 0 ? -1 : 1;
-        int yNegative = (newY - newYLoc) < 0 ? -1 : 1;
-
-        double maxDif = max(xDif, yDif);
         newXLoc += xDif / maxDif * xNegative;
         newYLoc += yDif / maxDif * yNegative;
-
+        Serial.print("Actual: x ");
+        Serial.println(newXLoc);
+        Serial.print("Actual: y ");
+        Serial.println(newYLoc);
         polar(newXLoc, newYLoc, true);
         polar(newXLoc, newYLoc, false);
         polar(newXLoc, newYLoc, true);
-        polar(newX, newY, true);
+        polar(100, 100, true);
         polar(newXLoc, newYLoc, true);
 
         // polar(xLoc,yLoc,true);
     }
-
-    // polar(test[i][0],test[i][1],true);
-    // polar(0,50,true);
 }
 void line_command()
 {
@@ -123,59 +143,145 @@ void line_command()
     // Serial.println(line_array[3]);
     Serial.println("Calling polar with params:");
     Serial.println(line_array[0]);
-    Serial.println(line_array[0]);
+    Serial.println(line_array[1]);
+    Serial.println(true);
+    polar(line_array[0], line_array[1], true);
+    Serial.println("Calling draw_line with params:");
+    Serial.println(line_array[2]);
+    Serial.println(line_array[3]);
     Serial.println(false);
-    polar(line_array[0], line_array[1], false);
-    polar(line_array[2], line_array[3], false);
+    draw_line(line_array[2], line_array[3]);
     polar(xLoc, yLoc, true);
     // polar ); "L," ); line_array[2] ); "," ); line_array[3] ); "\n");
     // goLoc);"e\n");
 }
-void polar(double x, double y, bool up)
+bool polar(double x, double y, bool up)
 {
+    //  Serial.print("Planned: x ");
+    //  Serial.println(x);
+    //  Serial.print("Planned: y ");
+    //  Serial.println(y);
+
     // Updates xLoc and yLoc
     xLoc = x;
     yLoc = y;
-    Serial.println(x);
+
+    x = 145 - x;
+    y = 145 - y;
+    //  x*=-1;
+    //  y*=-1;
+    //  Serial.print("Actual: x ");
+    //  Serial.println(x);
+    //  Serial.print("Actual: y ");
+    //  Serial.println(y);
+
     // Calculate needed length of r
-    double r = sqrt(pow(x, 2) + pow(y, 2));
-    double rotation = asin(x / r) * (180 / M_PI) + 90;
-    r -= 8;
+    float r = sqrt(pow(x, 2) + pow(y, 2));
+
     // r is not to go futher than 130
-    Serial.println(r);
+    if (r > 145)
+    {
+        Serial.println("MAX");
+        return true;
+
+        r = 145;
+    }
+    if (r < 60)
+    {
+        Serial.println("MIN");
+        return true;
+    }
+
+    double rotation = 0;
+
+    // Ca  lculate needed rotation of the middle
+    // If x is 0 then the rotation is equal to 0
+    if (y != 0)
+    {
+        rotation = atan(x / y) * 180 / PI;
+    }
+    else
+    {
+        rotation = 90 * (x / abs(x));
+    }
+    //  if(y > 0 && x != 0)
+    //  {
+    //    rotation = atan(x/y) * 180 /PI;
+    //  }
 
     // This is location of the rotational value
-    double newMiddleRot = rotation;
+    double newMiddleRot = rotation + 90;
+    if (newMiddleRot < 0 || newMiddleRot > 180)
+    {
+        return true;
+    }
 
-    int goLocZ = 0;
+    int goLocY = -13;
+
+    if (r < 45)
+    {
+        r = 45;
+    }
+
+    if (r <= 40)
+    {
+        // Serial.println("Lv 1");
+        goLocY = -8;
+    }
+    else if (r <= 50)
+    {
+        // Serial.println("Lv 2");
+        goLocY = -9;
+    }
+    else if (r <= 60)
+    {
+        // Serial.println("Lv 3");
+        goLocY = -10;
+    }
+    else if (r <= 80)
+    {
+        // Serial.println("Lv 4");
+        goLocY = -20;
+    }
+    else
+    {
+        // Serial.println("Lv 5");
+        goLocY = -20;
+    }
 
     if (up)
     {
-        goLocZ = 30;
+        goLocY = 30;
     }
-    if (armHeight != 30 && goLocZ == 30)
+
+    if (armHeight != 30 && goLocY == 30)
     {
+        right.write(90);
         rightMotorRot = 90;
         leftMotorRot = 90;
+        left.write(90);
+        delay(300);
     }
 
     // GOLOC FUNCTION
-    armHeight = goLocZ;
+    armHeight = goLocY;
     double b = armOneLength;
     double c = armTwoLength;
 
-    double aLength = sqrt((r * r) + (goLocZ * goLocZ));
+    double aLength = sqrt((r * r) + (goLocY * goLocY));
 
-    double topSec = 1 - (aLength * aLength / (2 * b * b));
-    double aAngle = (acos(topSec) * (180 / M_PI));
+    double topSec = (pow(b, 2)) + (pow(c, 2)) - pow(aLength, 2);
+    double total = topSec / (2 * b * c);
+    double aAngle = (acos(total) * (180 / PI));
 
-    double bAngle = 180 - aAngle - (asin(goLocZ / aLength) * (180 / M_PI));
+    double bTotal = (pow(c, 2) + pow(aLength, 2) - pow(b, 2)) / (2 * c * aLength);
+    double bAngle = 180 - (acos(bTotal) * (180 / PI)) - (asin(goLocY / aLength) * (180 / PI));
 
     double newRightRot = bAngle;
-    double newLeftRot = aAngle;
+    double newLeftRot = 90 - (newRightRot - aAngle);
 
     double MiddleDif = abs(middleRot - newMiddleRot);
-    double RightDif = abs(rightMotorRot - newRightRot);
+    double RightDif = abs(rightMotorRot - bAngle);
     double LeftDif = abs(leftMotorRot - newLeftRot);
 
     int MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
@@ -185,42 +291,89 @@ void polar(double x, double y, bool up)
     double maxDif = max(MiddleDif, RightDif);
     maxDif = max(LeftDif, maxDif);
 
-    while (maxDif > 1)
+    while (maxDif > 2)
     {
+        claw.write(160);
+        // newLeftRot = 90 - (rightMotorRot-aAngle);
 
         MiddleDif = abs(middleRot - newMiddleRot);
-        RightDif = abs(rightMotorRot - newRightRot);
+        RightDif = abs(rightMotorRot - bAngle);
         LeftDif = abs(leftMotorRot - newLeftRot);
 
         MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
-        RightNegative = (newRightRot - rightMotorRot) < 0 ? -1 : 1;
+        RightNegative = (bAngle - rightMotorRot) < 0 ? -1 : 1;
         LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
 
         maxDif = max(MiddleDif, RightDif);
         maxDif = max(LeftDif, maxDif);
 
         middleRot += (MiddleDif / maxDif) * MiddleNegative;
-        middle.write(leftMotorRot);
+        middle.write(middleRot);
+
         rightMotorRot += (RightDif / maxDif) * RightNegative;
-        right.write(leftMotorRot);
+        right.write(rightMotorRot);
+
         leftMotorRot += (LeftDif / maxDif) * LeftNegative;
         left.write(leftMotorRot);
+
+        delay(10);
+        // delay(20);
     }
 
-    // delay(20);
-    middleRot = newMiddleRot;
-    middle.write(middleRot);
-    leftMotorRot = newLeftRot;
-    left.write(leftMotorRot);
-    rightMotorRot = bAngle;
-    right.write(rightMotorRot);
+    middle.write(newMiddleRot);
+    left.write(newLeftRot);
+    right.write(bAngle);
 
-    //      std::cout<<"Middle");
-    //    std::cout<<middleRot);
-    //   std::cout<<"Right");
-    //    std::cout<<rightMotorRot);
-    //    std::cout<<"Left");
-    //    std::cout<<leftMotorRot);
+    middleRot = newMiddleRot;
+    leftMotorRot = newLeftRot;
+    rightMotorRot = bAngle;
+    return false;
+
+    //      Serial.print("Middle");
+    //    Serial.println(middleRot);
+    //   Serial.print("Right");
+    //    Serial.println(rightMotorRot);
+    //    Serial.print("Left");
+    //    Serial.println(leftMotorRot);
+    // delay(100);
+
+    // Test if the arm is to go up or down
+    //  if(up == true)
+    //  {
+    //    //Go from current armHeight to top
+    //    for(int i = armHeight; i < 100; i+= 50)
+    //    {
+    //      if(i > 100)
+    //      {
+    //        i == 100;
+    //      }
+    //      //goLoc(r,i);
+    //      //delay(100);
+    //    }
+    //  }
+    //  else
+    //  {
+    //    //Go from current armHeight to bottom
+    //    for(int i = armHeight; i > 0; i -= 50)
+    //    {
+    //
+    //      if(i < 0)
+    //      {
+    //        i == 0;
+    //      }
+    //      //goLoc(r,i);
+    //      //delay(100);
+    //    }
+    //
+    //  }
+    //  if(up == true)
+    //  {
+    //    //goLoc(r,100);
+    //  }
+    //  else
+    //  {
+    //    //goLoc(r,0);
+    //  }
     // delay(100);
 }
 
@@ -243,12 +396,13 @@ void circle_command()
     float i = 0;
     initial_points[0] = circle_array[0] + r1;
     initial_points[1] = circle_array[1];
+    polar(initial_points[0], initial_points[1], true);
     while (i < 3.141516 * 2)
     {
-        polar(r1 * cos(i) + circle_array[0], r2 * sin(i) + circle_array[1], false);
+        draw_line(r1 * cos(i) + circle_array[0], r2 * sin(i) + circle_array[1]);
         i += (3.1415 * 2) / circle_fidelity;
     }
-    polar(initial_points[0], initial_points[1], false);
+    draw_line(initial_points[0], initial_points[1]);
     for (int i = 0; i < 4; i++)
         circle_array[i] = 0;
 }
@@ -305,14 +459,15 @@ void cubicBezierCurve(float cX1, float cY1, float cX2, float cY2, float finalX, 
     float starting_y = yLoc;
     float new_x;
     float new_y;
+    polar(starting_x, starting_y, true);
     while (i < 1)
     {
         new_x = (1 - i) * (1 - i) * (1 - i) * starting_x + 3 * (1 - i) * (1 - i) * i * cX1 + 3 * (1 - i) * i * i * cX2 + i * i * i * finalX;
         new_y = (1 - i) * (1 - i) * (1 - i) * starting_y + 3 * (1 - i) * (1 - i) * i * cY1 + 3 * (1 - i) * i * i * cY2 + i * i * i * finalY;
         i += 1.0 / fidelity;
-        polar(new_x, new_y, false);
+        draw_line(new_x, new_y);
     }
-    polar(finalX, finalY, false);
+    draw_line(finalX, finalY);
     previous_bezier[0] = cX2;
     previous_bezier[1] = cY2;
 }
@@ -323,12 +478,13 @@ void quadraticBezierCurve(float cX1, float cY1, float finalX, float finalY)
     float new_y;
     float starting_x = xLoc;
     float starting_y = yLoc;
+    polar(starting_x, starting_y, true);
     while (i < 1)
     {
         new_x = (1 - i) * (1 - i) * xLoc + 2 * (1 - i) * i * cX1 + i * i * finalX;
         new_y = (1 - i) * (1 - i) * yLoc + 2 * (1 - i) * i * cY1 + i * i * finalY;
         // goLoc << "c," << cur_pos[x] << "," << cur_pos[y] << "\n");
-        polar(new_x, new_y, false);
+        draw_line(new_x, new_y);
         i += 1.0 / fidelity;
     }
     // Lift the pen u
@@ -549,7 +705,7 @@ char get_num_from_quote(int num_array[], const uint8_t index_in_array)
 }
 
 void readLine()
-{
+{ 
     for (int i = 0; i < buffer_len; i++)
         buffer[i] = '\0';
     for (int i = 0; i < 4; i++)
@@ -561,7 +717,7 @@ void readLine()
         file.read();
     }
     idx = 0;
-    Serial.print(file.peek());
+    Serial.println("Readline");
     while ((file.peek() != ' ' and file.peek() != '\n') and idx <= 10 and file.available())
     {
         buffer[idx] = file.read();
@@ -691,7 +847,7 @@ void readLine()
         //      //TODO polyline parsing
         // Just going to treat it as a line array
         //<polyline fill="none" stroke="#000000" stroke-width="0.2835" stroke-miterlimit="10" points="224,128.2 224,135 224,128.2
-        //				230.9,128.2 230.9,119 224,119 224,112.3 224,119 			"/>
+        //        230.9,128.2 230.9,119 224,119 224,112.3 224,119       "/>
         while (cur_char != '>')
         {
             if (cur_char == 'p')
@@ -932,7 +1088,7 @@ void readLine()
     }
     else if (strstr(buffer, "<g>") or strstr(buffer, "</g>"))
     {
-        for (uint8_t i = 0; i < i++; i++)
+        for (uint8_t i = 0; i < buffer_len; i++)
         {
             buffer[i];
         }
@@ -940,225 +1096,26 @@ void readLine()
     }
     else
     {
-        while (file.read() != '>' and file.available())
+      char test;
+        while (test != '>' and file.available())
         {
+          test = file.read();
+          Serial.print(test);
         }
     }
     Serial.println();
     return;
 }
 
-void polar(double x, double y, bool up)
-{
-    // Updates xLoc and yLoc
-    xLoc = x;
-    yLoc = y;
-
-    // Calculate needed length of r
-    float r = sqrt(pow(x, 2) + pow(y, 2));
-
-    // r is not to go futher than 130
-    if (r > 145)
-    {
-        Serial.println("MAX");
-        return;
-
-        r = 145;
-    }
-    if (r < 60)
-    {
-        Serial.println("MIN");
-        return;
-    }
-    if (x > 0)
-    {
-        return;
-    }
-    double rotation = 0;
-
-    // Calculate needed rotation of the middle
-    // If x is 0 then the rotation is equal to 0
-    if (x != 0)
-    {
-        rotation = atan(y / x) * 180 / PI;
-    }
-    //  if(y > 0 && x != 0)
-    //  {
-    //    rotation = -(atan((-y)/x) * 180 /PI);
-    //  }
-
-    // This is location of the rotational value
-    double newMiddleRot = rotation + 90;
-    if (newMiddleRot < 0 || newMiddleRot > 180)
-    {
-        return;
-    }
-
-    int goLocY = -13;
-
-    if (r < 45)
-    {
-        r = 45;
-    }
-
-    if (r <= 40)
-    {
-        // Serial.println("Lv 1");
-        goLocY = -8;
-    }
-    else if (r <= 50)
-    {
-        // Serial.println("Lv 2");
-        goLocY = -9;
-    }
-    else if (r <= 60)
-    {
-        // Serial.println("Lv 3");
-        goLocY = -10;
-    }
-    else if (r <= 80)
-    {
-        // Serial.println("Lv 4");
-        goLocY = -20;
-    }
-    else
-    {
-        // Serial.println("Lv 5");
-        goLocY = -20;
-    }
-
-    if (up)
-    {
-        goLocY = 30;
-    }
-
-    if (armHeight != 30 && goLocY == 30)
-    {
-        right.write(90);
-        rightMotorRot = 90;
-        leftMotorRot = 90;
-        left.write(90);
-        delay(300);
-    }
-
-    // GOLOC FUNCTION
-    armHeight = goLocY;
-    double b = armOneLength;
-    double c = armTwoLength;
-
-    double aLength = sqrt((r * r) + (goLocY * goLocY));
-
-    double topSec = (pow(b, 2)) + (pow(c, 2)) - pow(aLength, 2);
-    double total = topSec / (2 * b * c);
-    double aAngle = (acos(total) * (180 / PI));
-
-    double bTotal = (pow(c, 2) + pow(aLength, 2) - pow(b, 2)) / (2 * c * aLength);
-    double bAngle = 180 - (acos(bTotal) * (180 / PI)) - (asin(goLocY / aLength) * (180 / PI));
-
-    double newRightRot = bAngle;
-    double newLeftRot = 90 - (newRightRot - aAngle);
-
-    double MiddleDif = abs(middleRot - newMiddleRot);
-    double RightDif = abs(rightMotorRot - bAngle);
-    double LeftDif = abs(leftMotorRot - newLeftRot);
-
-    int MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
-    int RightNegative = (bAngle - rightMotorRot) < 0 ? -1 : 1;
-    int LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
-
-    double maxDif = max(MiddleDif, RightDif);
-    maxDif = max(LeftDif, maxDif);
-
-    while (maxDif > 2)
-    {
-        claw.write(160);
-        // newLeftRot = 90 - (rightMotorRot-aAngle);
-
-        MiddleDif = abs(middleRot - newMiddleRot);
-        RightDif = abs(rightMotorRot - bAngle);
-        LeftDif = abs(leftMotorRot - newLeftRot);
-
-        MiddleNegative = (newMiddleRot - middleRot) < 0 ? -1 : 1;
-        RightNegative = (bAngle - rightMotorRot) < 0 ? -1 : 1;
-        LeftNegative = (newLeftRot - leftMotorRot) < 0 ? -1 : 1;
-
-        maxDif = max(MiddleDif, RightDif);
-        maxDif = max(LeftDif, maxDif);
-
-        middleRot += (MiddleDif / maxDif) * MiddleNegative;
-        middle.write(middleRot);
-
-        rightMotorRot += (RightDif / maxDif) * RightNegative;
-        right.write(rightMotorRot);
-
-        leftMotorRot += (LeftDif / maxDif) * LeftNegative;
-        left.write(leftMotorRot);
-
-        delay(20);
-        // delay(20);
-    }
-
-    middle.write(newMiddleRot);
-    left.write(newLeftRot);
-    right.write(bAngle);
-
-    middleRot = newMiddleRot;
-    leftMotorRot = newLeftRot;
-    rightMotorRot = bAngle;
-
-    //      Serial.print("Middle");
-    //    Serial.println(middleRot);
-    //   Serial.print("Right");
-    //    Serial.println(rightMotorRot);
-    //    Serial.print("Left");
-    //    Serial.println(leftMotorRot);
-    // delay(100);
-
-    // Test if the arm is to go up or down
-    //  if(up == true)
-    //  {
-    //    //Go from current armHeight to top
-    //    for(int i = armHeight; i < 100; i+= 50)
-    //    {
-    //      if(i > 100)
-    //      {
-    //        i == 100;
-    //      }
-    //      //goLoc(r,i);
-    //      //delay(100);
-    //    }
-    //  }
-    //  else
-    //  {
-    //    //Go from current armHeight to bottom
-    //    for(int i = armHeight; i > 0; i -= 50)
-    //    {
-    //
-    //      if(i < 0)
-    //      {
-    //        i == 0;
-    //      }
-    //      //goLoc(r,i);
-    //      //delay(100);
-    //    }
-    //
-    //  }
-    //  if(up == true)
-    //  {
-    //    //goLoc(r,100);
-    //  }
-    //  else
-    //  {
-    //    //goLoc(r,0);
-    //  }
-    // delay(100);
-}
 
 void loop()
 {
     while (file.available())
     {
+        Serial.print("HEre");
         readLine();
-        file.close();
+        
+
     }
+            file.close();
 }
